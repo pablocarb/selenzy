@@ -140,11 +140,18 @@ def arguments():
                         help='Metanetx chemical structures (if input is reaction id)')
     parser.add_argument('-th', type=float, default=0.8, 
                         help='Similarity threshold [default=0.8]')
+    parser.add_argument('-out', 
+                        help='Output results in .txt file, please specify file name')
     arg = parser.parse_args()
     return arg
 
+
+
 if __name__ == '__main__':
     arg = arguments()
+    
+    fileObj = open(arg.out, 'w')
+    
     rsp = reacSubsProds(arg.db)
     if arg.rxn is not None:
         rTarget = getReaction(arg.rxn)
@@ -174,3 +181,4 @@ if __name__ == '__main__':
             S1, S2 = getRSim(s1, p1, s2, p2, sim)
             if S1 > 0 and S2 > 0:
                 print(r1, r2, S1, S2)
+                print(r1, r2, S1, S2, file = fileObj)
