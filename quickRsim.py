@@ -51,7 +51,10 @@ def getClosest(smi, fp, th=0.8):
             if len(w) < 6:
                 d = 1.0
             else:
-                d = float(w[7])
+                try:
+                    d = float(w[7])
+                except:
+                    continue                    
             dist[name] = d
     return dist
 
