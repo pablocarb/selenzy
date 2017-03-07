@@ -143,11 +143,24 @@ def arguments():
                         help='Metanetx chemical structures (if input is reaction id)')
     parser.add_argument('-th', type=float, default=0.8, 
                         help='Similarity threshold [default=0.8]')
+    parser.add_argument('-out', 
+                        help='Output results in .txt file, please specify file name')
+    parser.add_argument('-high', 
+                        help='Output results in .txt file with highest similarity score from both forwards and backwards reactions, please specify file name')
     arg = parser.parse_args()
     return arg
 
+
+
 if __name__ == '__main__':
     arg = arguments()
+    
+    if arg.out:
+        fileObj = open(arg.out, 'w')
+    
+    if arg.high:
+        fileObj = open(arg.high, 'w')
+    
     rsp = reacSubsProds(arg.db)
     if arg.rxn is not None:
         rTarget = getReaction(arg.rxn)
@@ -173,7 +186,19 @@ if __name__ == '__main__':
     for r1 in rTarget:
         s1, p1 = rTarget[r1]
         for r2 in rsp:
+            if r2 == 'MNXR7145':
+                import pdb
+                pdb.set_trace()
             s2, p2 = rsp[r2]
             S1, S2 = getRSim(s1, p1, s2, p2, sim)
             if S1 > 0 and S2 > 0:
                 print(r1, r2, S1, S2)
+                
+                if arg.out:
+                    print(r1, r2, S1, S2, file = fileObj)
+                
+                if arg.high:
+                    if S1 >= S2:
+                        print(r1, r2, S1, file = fileObj)
+                    else:
+                        print(r1, r2, S2, file = fileObj)
