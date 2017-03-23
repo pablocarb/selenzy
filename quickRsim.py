@@ -13,13 +13,17 @@ python quickRsim.py data/reac_prop.tsv data/metanetx.fs -rid MNXR3215 -chem data
 2. Compute similarity to a given reaction file for a threshold above 0.9
 python quickRsim.py data/reac_prop.tsv data/metanetx.fs -rxn rhea15870.rxn -th 0.9
 '''
+
 from __future__ import print_function
 import argparse
 import subprocess
 import re
 from os import path
+import os
 from rdkit.Chem import rdChemReactions
 import math
+import numpy as np
+from rdkit import DataStructs
 
 def getReaction(rfile):
     rxn = rdChemReactions.ReactionFromRxnFile(rfile)
@@ -39,23 +43,16 @@ def getReaction(rfile):
     rsp = {rfile: (sd, pd)}
     return rsp
 
-def getClosest(smi, fp, th=0.8):
-    cmd = ['babel', fp, '-ofpt', '-s'+smi, '-at'+str(th)]
-    job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = job.communicate()
+def getClosest(smi, fpfile, th=0.8):
     dist = {}
-    for x in out.decode('utf8').split('\n'):
-        if x.startswith('>'):
-            w = x.rstrip().split(' ')
-            name = re.sub('>', '', w[0])
-            if len(w) < 6:
-                d = 1.0
-            else:
-                try:
-                    d = float(w[7])
-                except:
-                    continue                    
-            dist[name] = d
+    data = np.load(fpfile)
+    fp = data['x'] 
+    fpNames = data['y']
+    data.close()
+
+    tn = DataStructs.BulkTanimotoSimilarity(fp[2], list(fp))
+    for i in sorted(range(0, len(tn)), key = lambda j: -tn[j] ):
+        dist[fpNames[i]] = tn[i]
     return dist
 
 
@@ -113,6 +110,9 @@ def getRSim(s1, p1, s2, p2, sim):
                 for y in cl[p[1]]:
                     if y in sim[x]:
                         pairings.add( (sim[x][y], x, y) )
+                        if y == 'MNXR70380':
+                            import pdb
+                            pdb.set_trace()
         found = {'left': set(), 'right': set()}
         for v in sorted(pairings, key = lambda h: -h[0]):
             if v[1] not in found['left'] and v[2] not in found['right']:
@@ -186,9 +186,9 @@ if __name__ == '__main__':
     for r1 in rTarget:
         s1, p1 = rTarget[r1]
         for r2 in rsp:
-            if r2 == 'MNXR7145':
-                import pdb
-                pdb.set_trace()
+#            if r2 == 'MNXR70380':
+#                import pdb
+#                pdb.set_trace()
             s2, p2 = rsp[r2]
             S1, S2 = getRSim(s1, p1, s2, p2, sim)
             if S1 > 0 and S2 > 0:
@@ -202,3 +202,6 @@ if __name__ == '__main__':
                         print(r1, r2, S1, file = fileObj)
                     else:
                         print(r1, r2, S2, file = fileObj)
+                        
+
+                        
