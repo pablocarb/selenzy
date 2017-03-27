@@ -23,7 +23,9 @@ import os
 from rdkit.Chem import rdChemReactions
 import math
 import numpy as np
-from rdkit import DataStructs
+from rdkit import DataStructs, Chem
+from rdkit.Chem.rdMolDescriptors import GetMorganFingerprint, GetConnectivityInvariants
+
 
 def getReaction(rfile):
     rxn = rdChemReactions.ReactionFromRxnFile(rfile)
@@ -49,9 +51,11 @@ def getClosest(smi, fpfile, th=0.8):
     fp = data['x'] 
     fpNames = data['y']
     data.close()
-
-    tn = DataStructs.BulkTanimotoSimilarity(fp[2], list(fp))
-    for i in sorted(range(0, len(tn)), key = lambda j: -tn[j] ):
+    radius = 5
+    targetMol = Chem.MolFromSmiles(smi)
+    targetFp = GetMorganFingerprint(targetMol, radius)
+    tn = DataStructs.BulkTanimotoSimilarity(targetFp, list(fp))
+    for i in sorted(range(0, len(tn))):
         dist[fpNames[i]] = tn[i]
     return dist
 
@@ -110,9 +114,8 @@ def getRSim(s1, p1, s2, p2, sim):
                 for y in cl[p[1]]:
                     if y in sim[x]:
                         pairings.add( (sim[x][y], x, y) )
-                        if y == 'MNXR70380':
-                            import pdb
-                            pdb.set_trace()
+                           # import pdb
+                            #pdb.set_trace()
         found = {'left': set(), 'right': set()}
         for v in sorted(pairings, key = lambda h: -h[0]):
             if v[1] not in found['left'] and v[2] not in found['right']:
@@ -190,6 +193,7 @@ if __name__ == '__main__':
 #                import pdb
 #                pdb.set_trace()
             s2, p2 = rsp[r2]
+            debug = False
             S1, S2 = getRSim(s1, p1, s2, p2, sim)
             if S1 > 0 and S2 > 0:
                 print(r1, r2, S1, S2)
