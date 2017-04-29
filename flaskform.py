@@ -6,13 +6,13 @@ Created on Thu Feb  9 12:20:49 2017
 @author: jerrywzy
 """
 import os
-import SeqFind
+import Selenzy
 from flask import Flask, flash, render_template, request, redirect, url_for, send_from_directory
 from werkzeug import secure_filename
 import pandas as pd
 import numpy as np
 
-UPLOAD_FOLDER = '/home/jerrywzy/Python Scripts/uploads'
+UPLOAD_FOLDER = '/home/jerrywzy/selenzy/uploads'
 ALLOWED_EXTENSIONS = set(['rxn', ' '])
 
 app = Flask(__name__)
@@ -65,7 +65,7 @@ def analysed_file(filename, targets, direction):
         csvfile = "results_"+filenamepure+".csv"
     else:
         csvfile = "results_"+filename+".csv"
-    SeqFind.analyse("uploads/"+filename, targets, direction) # this creates CSV file in uploads folder
+    Selenzy.analyse("uploads/"+filename, targets, direction) # this creates CSV file in uploads folder
     data = pd.read_csv(os.path.join(app.config['UPLOAD_FOLDER'], csvfile))
     data.index = data.index + 1
     return render_template('results.html', tables=data.to_html(), query=realfile, csvfile=csvfile)
