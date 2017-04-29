@@ -1,0 +1,59 @@
+<!doctype html>
+<title>Selenzy | Results </title>
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='style_results.css') }}">
+<div class=page>
+  <h1>Results</h1>
+  <h2></h2>
+    {{ tables|safe }}
+
+</div>
+<script>
+var header2 = document.getElementsByTagName('h2')[0];
+var rheaTag = document.createElement('a');
+var rhealink = "http://www.rhea-db.org/reaction?id={{query}}";
+var csvTag = document.createElement('a');
+var csvlink = "files/{{csvfile}}";
+var fastaTag = document.createElement('a');
+var fastalink = "files/sequences.txt";
+
+csvTag.setAttribute('href', csvlink);
+//csvTag.setAttribute('target', '_blank');
+csvTag.setAttribute('class', 'csvdl');
+csvTag.innerHTML = "[Download CSV]"
+fastaTag.setAttribute('href', fastalink);
+fastaTag.setAttribute('target', '_blank');
+fastaTag.setAttribute('class', 'fastadl');
+fastaTag.innerHTML = "[Download FASTA]"
+
+header2.appendChild(csvTag)
+header2.appendChild(fastaTag)
+
+var rows = document.getElementsByTagName('tr');
+
+for (var i = 1; i < rows.length; i++)	{
+
+	var seqID = rows[i].getElementsByTagName('td')[0];
+	var rxnID = rows[i].getElementsByTagName('td')[3];
+
+	var seqlink = "//www.uniprot.org/uniprot/" + rows[i].getElementsByTagName('td')[0].innerHTML;
+
+	var rxnlink = "http://www.metanetx.org/cgi-bin/mnxweb/equa_info?equa=" + rows[i].getElementsByTagName('td')[3].innerHTML;
+
+	var aTag = document.createElement('a');
+	var bTag = document.createElement('a');
+	
+
+	aTag.setAttribute('href', seqlink);
+	aTag.setAttribute('target', '_blank');
+	bTag.setAttribute('href', rxnlink);
+	bTag.setAttribute('target', '_blank');
+
+	aTag.innerHTML = rows[i].getElementsByTagName('td')[0].innerHTML;
+	bTag.innerHTML = rows[i].getElementsByTagName('td')[3].innerHTML;
+
+	seqID.replaceChild(aTag, seqID.childNodes[0]);
+	rxnID.replaceChild(bTag, rxnID.childNodes[0]);
+
+}
+</script>
+
