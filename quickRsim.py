@@ -45,6 +45,22 @@ def getReaction(rfile):
     rsp = {rfile: (sd, pd)}
     return rsp
 
+def getReactionFromSmiles(smi):
+    left, right = smi.split('>>')
+    subs = left.split('.')
+    prods = right.split('.')
+    sd, pd = ({},{})
+    for s in subs:
+        if s not in sd:
+            sd[s] = 0
+        sd[s] += 1
+    for p in prods:
+        if p not in pd:
+            pd[p] = 0
+        pd[p] += 1
+    rsp = {rfile: (sd, pd)}
+    return rsp
+
 def getClosest(smi, fpfile, th=0.8):
     dist = {}
     data = np.load(fpfile)
@@ -142,6 +158,8 @@ def arguments():
                         help='Input rxn reaction file')
     parser.add_argument('-rid', 
                         help='Input reaction id')
+    parser.add_argument('-rsmiles', 
+                        help='Input reaction SMILES')
     parser.add_argument('-chem', 
                         help='Metanetx chemical structures (if input is reaction id)')
     parser.add_argument('-th', type=float, default=0.8, 
@@ -167,6 +185,8 @@ if __name__ == '__main__':
     rsp = reacSubsProds(arg.db)
     if arg.rxn is not None:
         rTarget = getReaction(arg.rxn)
+    elif arg.rsmiles is not None:
+        rTarget = getReactionFromSmiles(arg.rsmiles)
     elif arg.rid is not None:
         struct = getStructs(arg.chem)
         rTarget = {arg.rid: [{},{}]}
