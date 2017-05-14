@@ -65,7 +65,7 @@ def analysed_file(filename, targets, direction):
         csvfile = "results_"+filenamepure+".csv"
     else:
         csvfile = "results_"+filename+".csv"
-    Selenzy.analyse("uploads/"+filename, targets, direction) # this creates CSV file in uploads folder
+    Selenzy.analyse("uploads/"+filename, targets, direction) # this creates CSV file in Uploads directory
     data = pd.read_csv(os.path.join(app.config['UPLOAD_FOLDER'], csvfile))
     data.index = data.index + 1
     return render_template('results.html', tables=data.to_html(), query=realfile, csvfile=csvfile)
