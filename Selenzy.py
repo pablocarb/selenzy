@@ -22,7 +22,7 @@ def readFasta(fileFasta):
     seen = set()
     seen_add = seen.add
     
-    for seq_record in SeqIO.parse("seqs.fasta", "fasta"):
+    for seq_record in SeqIO.parse(fileFasta, "fasta"):
         ming = seq_record.id
         idonly = re.search(r'\|(.*?)\|',ming)
         x = idonly.group(1)
@@ -85,8 +85,8 @@ def readRxnCons(consensus):
         
     return (MnxDir)   
     
-def getMnxSim(rxn, drxn=0):
-    cmd = ['/home/jerrywzy/anaconda3/envs/p2/bin/python', 'quickRsim.py', 
+def getMnxSim(rxn, p2env, drxn=0):
+    cmd = [p2env, 'quickRsim.py', 
            'data/reac_prop.tsv', 'data/fp.npz', '-rxn', rxn, '-out', 'results_rdkit.txt']
     job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = job.communicate()
@@ -228,7 +228,7 @@ def doMSA(finallistfile):
     return (cons)
       
     
-def analyse(rxn, targ, csvfilename, pdir=0):
+def analyse(rxn, fastafile, p2env, targ, csvfilename, pdir=0):
     
     rxnname = os.path.splitext(rxn)[0]
     csvname = rxnname.rsplit('/', 1)[-1]
@@ -240,12 +240,12 @@ def analyse(rxn, targ, csvfilename, pdir=0):
         
     print ("Running quickRsim...")    
     
-    (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxn, pdir)
+    (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxn, p2env, pdir)
 #    print(MnxSim)
 
     
     print ("Acquiring databases...")
-    (sequence, names, descriptions, osource) = readFasta("seqs.fasta")
+    (sequence, names, descriptions, osource) = readFasta(fastafile)
     
     with open('MnxToUprot.json') as f:
         MnxToUprot = json.load(f)
@@ -350,6 +350,10 @@ def arguments():
     parser = argparse.ArgumentParser(description='SeqFind script for Selenzy')
     parser.add_argument('rxn', 
                         help='Input rxn reaction file')
+    parser.add_argument('fasta', 
+                        help='Specify path to seqs.fasta database file')
+    parser.add_argument('p2env', 
+                        help='Specify path to python 2 environment directory')
     parser.add_argument('-tar', type=float, default=20,
                         help='Number of targets to display in results [default = 20')
     parser.add_argument('-d', type=float, default=0,
@@ -363,7 +367,7 @@ def arguments():
 if __name__ == '__main__':
     arg = arguments()
     
-    analyse(arg.rxn, arg.tar, arg.outfile, arg.d)
+    analyse(arg.rxn, arg.tar, arg.fasta, arg.p2env, arg.outfile, arg.d)
 
 #    from os import listdir
 #    from os.path import isfile, join
