@@ -86,8 +86,8 @@ def readRxnCons(consensus):
     return (MnxDir)   
     
 def getMnxSim(rxn, drxn=0):
-    cmd = ['/home/jerrywzy/anaconda3/envs/p2/bin/python', 'quickRsim2.py', 
-           'reac_prop.tsv', 'fp.npz', '-rxn', rxn, '-out', 'results_rdkit.txt']
+    cmd = ['/home/jerrywzy/anaconda3/envs/p2/bin/python', 'quickRsim.py', 
+           'data/reac_prop.tsv', 'data/fp.npz', '-rxn', rxn, '-out', 'results_rdkit.txt']
     job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = job.communicate()
 #    print(out)
