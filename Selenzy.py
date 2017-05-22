@@ -11,7 +11,9 @@ import json
 import csv
 import argparse
 
-def readFasta(fileFasta):
+
+
+def readFasta(datadir, fileFasta):
     
     from Bio import SeqIO
     
@@ -22,7 +24,7 @@ def readFasta(fileFasta):
     seen = set()
     seen_add = seen.add
     
-    for seq_record in SeqIO.parse(fileFasta, "fasta"):
+    for seq_record in SeqIO.parse(os.path.join(datadir, fileFasta), "fasta"):
         ming = seq_record.id
         idonly = re.search(r'\|(.*?)\|',ming)
         x = idonly.group(1)
@@ -85,20 +87,20 @@ def readRxnCons(consensus):
         
     return (MnxDir)   
     
-def getMnxSim(rxn, p2env, drxn=0):
+def getMnxSim(rxn, p2env, datadir, outdir, drxn=0):
     cmd = [p2env, 'quickRsim.py', 
-           'data/reac_prop.tsv', 'data/fp.npz', '-rxn', rxn, '-out', 'results_rdkit.txt']
+           os.path.join(datadir+'reac_prop.tsv'), os.path.join(datadir+'fp.npz'), '-rxn', rxn, '-out', os.path.join(outdir+'results_quickRsim.txt')]
     job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = job.communicate()
 #    print(out)
 #    global mnx
 #    mnx = []
     MnxSim = {}
-    MnxDirPref = readRxnCons("rxn_consensus_20160612.txt")
+    MnxDirPref = readRxnCons(os.path.join(datadir, "rxn_consensus_20160612.txt"))
     MnxDirUsed = {}
     
     if drxn==1:
-        file = open("results_rdkit.txt", 'r')
+        file = open(os.path.join(outdir, "results_quickRsim.txt"), 'r')
         for line in file:
             splitdata = line.split()
             S1 = splitdata[2]
@@ -131,8 +133,8 @@ def getMnxSim(rxn, p2env, drxn=0):
         return (MnxSim, MnxDirPref, MnxDirUsed)
         
     else:
-        
-        file = open("results_rdkit.txt", 'r')
+
+        file = open(os.path.join(outdir, "results_quickRsim.txt"), 'r')
         for line in file:
             splitdata = line.split()
             S1 = splitdata[2]
@@ -152,11 +154,12 @@ def getMnxSim(rxn, p2env, drxn=0):
         return (MnxSim, MnxDirPref, MnxDirUsed)
 
    
-def pepstats(file):
-    args = ("pepstats -sequence {0} -outfile results.pepstats".format(file))
+def pepstats(file, outdir):
+    outfile = os.path.join(outdir, "results.pepstats")
+    args = ("pepstats -sequence {0} -outfile ".format(file) + outfile)
     os.system(args)
     
-    f = open("results.pepstats", "r")
+    f = open(outfile, "r")
     
     hydrop = {}
     weight = {}
@@ -182,11 +185,12 @@ def pepstats(file):
             
     return (hydrop, weight, isoelec, polar)
         
-def garnier(file):
-    args = ("garnier -sequence {0} -outfile garnier.txt".format(file))
+def garnier(file, outdir):
+    outfile = os.path.join(outdir, "garnier.txt")
+    args = ("garnier -sequence {0} -outfile ".format(file) + outfile)
     os.system(args)
     
-    f = open("garnier.txt", "r")
+    f = open(outfile, "r")
 
     helices = {}
     sheets = {}
@@ -210,11 +214,12 @@ def garnier(file):
 
     return (helices, sheets, turns, coils)
             
-def doMSA(finallistfile):
-    args = ("t_coffee -in {0} -mode quickaln -output=score_ascii".format(finallistfile))
+def doMSA(finallistfile, outdir):
+    outfile = os.path.join(outdir, "sequences.score_ascii")
+    args = ("t_coffee -in {0} -mode quickaln -output=score_ascii -outfile ".format(finallistfile) + outfile)
     os.system(args)
     
-    f = open("sequences.score_ascii", "r")
+    f = open(outfile, "r")
 
     cons = {}
     
@@ -228,24 +233,27 @@ def doMSA(finallistfile):
     return (cons)
       
     
-def analyse(rxn, fastafile, p2env, targ, csvfilename, pdir=0):
+def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0):
     
-    rxnname = os.path.splitext(rxn)[0]
-    csvname = rxnname.rsplit('/', 1)[-1]
+    datadir = os.path.join(datadir)
+    outdir = os.path.join(outdir)
+    
+#    rxnname = os.path.splitext(rxn)[0]
+#    csvname = rxnname.rsplit('/', 1)[-1]
     
     if csvfilename: 
         csvfilename = csvfilename
     else:
-        csvfilename = "selenzy_"+csvname+".csv"
+        csvfilename = "results_selenzy.csv"
         
     print ("Running quickRsim...")    
     
-    (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxn, p2env, pdir)
+    (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxn, p2env, datadir, outdir, pdir)
 #    print(MnxSim)
 
     
     print ("Acquiring databases...")
-    (sequence, names, descriptions, osource) = readFasta(fastafile)
+    (sequence, names, descriptions, osource) = readFasta(datadir, "seqs.fasta")
     
     with open('MnxToUprot.json') as f:
         MnxToUprot = json.load(f)
@@ -263,7 +271,7 @@ def analyse(rxn, fastafile, p2env, targ, csvfilename, pdir=0):
     targplus = int(targ)*3
     list_mnx = sorted(MnxSim, key=MnxSim.__getitem__, reverse=True)[:int(targplus)]  #allow user to manipulate window of initial rxn id list
 #    print (list_mnx)
-    f = open("sequences.txt", 'w')
+    f = open(os.path.join(outdir, "sequences.txt"), 'w')
     print ("Creating initial MNX list...")
     targets = set()
 #    global UprotToMnx
@@ -295,9 +303,9 @@ def analyse(rxn, fastafile, p2env, targ, csvfilename, pdir=0):
                     
     f.close()
     #analysis of FinalList of sequences
-    (hydrop, weight, isoelec, polar) = pepstats("sequences.txt")
-    (helices, sheets, turns, coils) = garnier("sequences.txt")
-    cons = doMSA("sequences.txt")
+    (hydrop, weight, isoelec, polar) = pepstats(os.path.join(outdir, "sequences.txt"), outdir)
+    (helices, sheets, turns, coils) = garnier(os.path.join(outdir, "sequences.txt"), outdir)
+    cons = doMSA(os.path.join(outdir, "sequences.txt"), outdir)
     
     print ("Acquiring sequence properties...")
     # final table, do all data and value storing before this!
@@ -338,7 +346,7 @@ def analyse(rxn, fastafile, p2env, targ, csvfilename, pdir=0):
 #        print ('\t'.join(map(str, r)))
 #    f2.close()
     
-    with open (os.path.join(csvfilename), 'w') as csvfile:
+    with open (os.path.join(outdir, csvfilename), 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'Clust. No.', 'Rep. ID.', 'Consv. Score', 'Rxn Sim.', "Direction Used", "Direction Preferred", '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %'))
         for r in sortrows:
@@ -350,14 +358,16 @@ def arguments():
     parser = argparse.ArgumentParser(description='SeqFind script for Selenzy')
     parser.add_argument('rxn', 
                         help='Input rxn reaction file')
-    parser.add_argument('fasta', 
-                        help='Specify path to seqs.fasta database file')
     parser.add_argument('p2env', 
                         help='Specify path to python 2 environment directory')
     parser.add_argument('-tar', type=float, default=20,
                         help='Number of targets to display in results [default = 20')
     parser.add_argument('-d', type=float, default=0,
                         help='Use similiarity values for preferred reaction direction only [default=0 (OFF)]')
+    parser.add_argument('datadir',
+                        help='specify data directory for required databases files, please end with slash')
+    parser.add_argument('outdir',
+                        help='specify output directory for all output files, including final CSV file, please end with slash')
     parser.add_argument('-outfile',
                         help='specify non-default name for CSV file output')
     
@@ -367,7 +377,11 @@ def arguments():
 if __name__ == '__main__':
     arg = arguments()
     
-    analyse(arg.rxn, arg.tar, arg.fasta, arg.p2env, arg.outfile, arg.d)
+    newpath = os.path.join(arg.outdir)
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    
+    analyse(arg.rxn, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d)
 
 #    from os import listdir
 #    from os.path import isfile, join
