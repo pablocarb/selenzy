@@ -216,7 +216,8 @@ def garnier(file, outdir):
             
 def doMSA(finallistfile, outdir):
     outfile = os.path.join(outdir, "sequences.score_ascii")
-    args = ("t_coffee -in {0} -mode quickaln -output=score_ascii -outfile ".format(finallistfile) + outfile)
+    treefile = os.path.join(outdir, "sequences.dnd")
+    args = ("t_coffee -in {0} -mode quickaln -output=score_ascii -outfile ".format(finallistfile) +outfile+ " -newtree "+treefile)
     os.system(args)
     
     f = open(outfile, "r")
