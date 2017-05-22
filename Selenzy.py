@@ -89,7 +89,7 @@ def readRxnCons(consensus):
     
 def getMnxSim(rxn, p2env, datadir, outdir, drxn=0):
     cmd = [p2env, 'quickRsim.py', 
-           os.path.join(datadir+'reac_prop.tsv'), os.path.join(datadir+'fp.npz'), '-rxn', rxn, '-out', os.path.join(outdir+'results_quickRsim.txt')]
+           os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'fp.npz'), '-rxn', rxn, '-out', os.path.join(outdir,'results_quickRsim.txt')]
     job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = job.communicate()
 #    print(out)
@@ -247,7 +247,6 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0):
         csvfilename = "results_selenzy.csv"
         
     print ("Running quickRsim...")    
-    
     (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxn, p2env, datadir, outdir, pdir)
 #    print(MnxSim)
 
