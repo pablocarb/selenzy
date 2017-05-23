@@ -11,15 +11,32 @@ from flask import Flask, flash, render_template, request, redirect, url_for, sen
 from werkzeug import secure_filename
 import pandas as pd
 import numpy as np
-
-UPLOAD_FOLDER = '/home/jerrywzy/selenzy/uploads'
-ALLOWED_EXTENSIONS = set(['rxn', ' '])
+import argparse
+import uuid
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+
+def arguments():
+    parser = argparse.ArgumentParser(description='Options for the webserver')
+    parser.add_argument('upload_folder', 
+                        help='Upload folder')
+    parser.add_argument('p2env', 
+                        help='Specify path to python 2 environment directory')
+    parser.add_argument('datadir',
+                        help='specify data directory for required databases files, please end with slash')
+    arg = parser.parse_args()
+    return arg
+
 
 def allowed_file(filename):
     return filename 
+
+def file_path(uniqueid, filename):
+    uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], uniqueid)
+    uniquename = os.path.join(uniquefolder, filename)
+    return uniquename
 
 
 # @ signifies a decorator - wraps a function and modifies its behaviour
@@ -46,8 +63,13 @@ def upload_file():
             if request.form.get('direction'):
                 direction = 1
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for('analysed_file', filename=filename, targets=targets, direction=direction))
+            uniqueid = str(uuid.uuid4())
+            uniquename = file_path(uniqueid, filename)
+            uniquefolder = os.path.dirname(uniquename)
+            if not os.path.exists(uniquefolder):
+                os.mkdir(uniquefolder)
+            file.save(uniquename)
+            return redirect(url_for('analysed_file', session=uniqueid, filename=filename, targets=targets, direction=direction))
         
     return upload_form
     
@@ -55,21 +77,31 @@ def upload_file():
 def results_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-@app.route('/results/<filename>?<targets>?<direction>')    
-def analysed_file(filename, targets, direction):  
-#    file = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+@app.route('/results/<session>/<filename>?<targets>?<direction>')    
+def analysed_file(session, filename, targets, direction):  
+    filename = file_path(session, filename)
     filenameshort = os.path.splitext(filename)[0]
     realfile = (''.join(list(filter(str.isdigit, filenameshort))))
-    if "." in filename:
-        filenamepure = filenameshort.rsplit('/', 1)[-1]
-        csvfile = "results_"+filenamepure+".csv"
-    else:
-        csvfile = "results_"+filename+".csv"
-    Selenzy.analyse("uploads/"+filename, targets, direction) # this creates CSV file in Uploads directory
-    data = pd.read_csv(os.path.join(app.config['UPLOAD_FOLDER'], csvfile))
+    csvfile = os.path.basename(filenameshort)+".csv"
+    Selenzy.analyse(filename, 
+                    app.config['PYTHON2'],
+                    targets,
+                    app.config['DATA_FOLDER'],  
+                    os.path.dirname(filename),
+                    csvfile,
+                    int(direction)) # this creates CSV file in Uploads directory
+    data = pd.read_csv(file_path(session, csvfile))
     data.index = data.index + 1
     return render_template('results.html', tables=data.to_html(), query=realfile, csvfile=csvfile)
 
     
 if __name__== "__main__":  #only run server if file is called directly
+
+    arg = arguments()
+    ALLOWED_EXTENSIONS = set(['rxn', ' '])
+
+    app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.upload_folder)
+    app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
+    app.config['PYTHON2'] = os.path.abspath(arg.p2env)
+
     app.run(debug=True)
