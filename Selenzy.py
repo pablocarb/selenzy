@@ -234,7 +234,7 @@ def doMSA(finallistfile, outdir):
     return (cons)
       
     
-def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0):
+def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False):
     
     datadir = os.path.join(datadir)
     outdir = os.path.join(outdir)
@@ -305,7 +305,9 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0):
     #analysis of FinalList of sequences
     (hydrop, weight, isoelec, polar) = pepstats(os.path.join(outdir, "sequences.txt"), outdir)
     (helices, sheets, turns, coils) = garnier(os.path.join(outdir, "sequences.txt"), outdir)
-    cons = doMSA(os.path.join(outdir, "sequences.txt"), outdir)
+    import pdb
+    if not NoMSA:
+        cons = doMSA(os.path.join(outdir, "sequences.txt"), outdir)
     
     print ("Acquiring sequence properties...")
     # final table, do all data and value storing before this!
@@ -319,7 +321,10 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0):
             repid = clstrep[cn]
             rxnsimpre = float(MnxSim[mnx])
             rxnsim = float("{0:.5f}".format(rxnsimpre))
-            conservation = float(cons[y])
+            try:
+                conservation = float(cons[y])
+            except:
+                conservation = 0.0
 #            placeholder = float(0)
             h = helices[y]
             e = sheets[y]
@@ -370,6 +375,8 @@ def arguments():
                         help='specify output directory for all output files, including final CSV file, please end with slash')
     parser.add_argument('-outfile',
                         help='specify non-default name for CSV file output')
+    parser.add_argument('-NoMSA', action='store_true',
+                        help='Do not compute MSA/conservation scores')
     
     arg = parser.parse_args()
     return arg
@@ -381,7 +388,7 @@ if __name__ == '__main__':
     if not os.path.exists(newpath):
         os.makedirs(newpath)
     
-    analyse(arg.rxn, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d)
+    analyse(arg.rxn, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d, NoMSA=arg.NoMSA)
 
 #    from os import listdir
 #    from os.path import isfile, join
