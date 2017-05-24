@@ -3,30 +3,48 @@
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style_results.css') }}">
 <div class=page>
   <h1>Results</h1>
+  <div style="float: left;" class="Navigate">
+    </div>
+  <div style="float: right;" class="Return"><a href="/">[New query]</a></div>
+  <div style="clear: both;"></div>
   <h2></h2>
     {{ tables|safe }}
 
 </div>
 <script>
 var header2 = document.getElementsByTagName('h2')[0];
+var navigate = document.getElementsByClassName('Navigate')[0];
 var rheaTag = document.createElement('a');
 var rhealink = "http://www.rhea-db.org/reaction?id={{query}}";
 var csvTag = document.createElement('a');
 var csvlink = "files/{{csvfile}}";
 var fastaTag = document.createElement('a');
-var fastalink = "files/sequences.txt";
+var fastalink = "files/sequences.fasta";
+var msaTag = document.createElement('a');
+var msalink = "files/sequences_score.html";
+var msaFastaTag = document.createElement('a');
+var msafastalink = "files/sequences_aln.fasta";
 
 csvTag.setAttribute('href', csvlink);
 //csvTag.setAttribute('target', '_blank');
 csvTag.setAttribute('class', 'csvdl');
-csvTag.innerHTML = "[Download CSV]"
+csvTag.innerHTML = "[Download CSV]";
 fastaTag.setAttribute('href', fastalink);
 fastaTag.setAttribute('target', '_blank');
 fastaTag.setAttribute('class', 'fastadl');
 fastaTag.innerHTML = "[Download FASTA]"
+msaFastaTag.setAttribute('href', msafastalink);
+msaFastaTag.setAttribute('target', '_blank');
+msaFastaTag.innerHTML = "[Download MSA]";
+msaTag.setAttribute('href', msalink);
+msaTag.setAttribute('target', '_blank');
+msaTag.innerHTML = "[View MSA]";
 
-header2.appendChild(csvTag)
-header2.appendChild(fastaTag)
+
+navigate.appendChild(csvTag)
+navigate.appendChild(fastaTag)
+navigate.appendChild(msaFastaTag)
+navigate.appendChild(msaTag)
 
 var rows = document.getElementsByTagName('tr');
 

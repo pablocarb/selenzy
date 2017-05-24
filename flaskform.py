@@ -15,6 +15,7 @@ import argparse
 import uuid
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = str(uuid.uuid4())
 
 
 
@@ -70,12 +71,11 @@ def upload_file():
                 os.mkdir(uniquefolder)
             file.save(uniquename)
             return redirect(url_for('analysed_file', session=uniqueid, filename=filename, targets=targets, direction=direction))
-        
-    return upload_form
+    return render_template("my_form.html")
     
-@app.route('/results/files/<filename>')
-def results_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+@app.route('/results/<session>/files/<filename>')
+def results_file(session,filename):
+    return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], session), filename)
 
 @app.route('/results/<session>/<filename>?<targets>?<direction>')    
 def analysed_file(session, filename, targets, direction):  
@@ -104,4 +104,5 @@ if __name__== "__main__":  #only run server if file is called directly
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
     app.config['PYTHON2'] = os.path.abspath(arg.p2env)
 
-    app.run(debug=True)
+    app.run(host="0.0.0.0",port=5000)
+#    app.run(port=5000, debug=True)

@@ -182,12 +182,34 @@ def pepstats(file, outdir):
             splitdata = line.split()
             percent = splitdata[3]
             polar[seq] = percent
-            
+            seq
     return (hydrop, weight, isoelec, polar)
-        
+
+def noAmbiguousSeqs(infile, outfile):
+    """ Remove ambigous amino acid codes """
+    from Bio.Data.IUPACData import protein_letters_1to3, extended_protein_values
+    from Bio import SeqIO
+    from Bio.Seq import Seq
+    from Bio.SeqRecord import SeqRecord
+    from Bio.Alphabet import generic_protein
+
+    newrecords = []
+    for record in SeqIO.parse(infile, "fasta"):
+        newseq = ''
+        for aa in record.seq:
+            if aa not in protein_letters_1to3:
+                newseq += extended_protein_values[aa][0]
+            else:
+                newseq += aa
+        newrecords.append( SeqRecord(Seq(newseq), id = record.id, description = record.description) )
+    SeqIO.write(newrecords, outfile, "fasta")
+    
 def garnier(file, outdir):
+    fixfile = file+'.fix.fasta'
+    noAmbiguousSeqs(file, fixfile)
     outfile = os.path.join(outdir, "garnier.txt")
-    args = ("garnier -sequence {0} -outfile ".format(file) + outfile)
+    
+    args = ("garnier -sequence {0} -outfile ".format(fixfile) + outfile)
     os.system(args)
     
     f = open(outfile, "r")
@@ -216,9 +238,17 @@ def garnier(file, outdir):
             
 def doMSA(finallistfile, outdir):
     outfile = os.path.join(outdir, "sequences.score_ascii")
+    outfile_html = os.path.join(outdir, "sequences.score_ascii.score_html")
+    outfile_aln = os.path.join(outdir, "sequences.score_ascii.fasta_aln")
+    align_html = os.path.join(outdir, "sequences_score.html")
+    align_fasta = os.path.join(outdir, "sequences_aln.fasta")
     treefile = os.path.join(outdir, "sequences.dnd")
-    args = ("t_coffee -in {0} -mode quickaln -output=score_ascii -outfile ".format(finallistfile) +outfile+ " -newtree "+treefile)
+    args = ("t_coffee -in {0} -mode quickaln -output=score_ascii,fasta_aln,score_html -outfile ".format(finallistfile) +outfile+ " -newtree "+treefile)
     os.system(args)
+    if os.path.exists(outfile_html):
+        os.rename(outfile_html, align_html)
+    if os.path.exists(outfile_aln):
+        os.rename(outfile_aln, align_fasta)
     
     f = open(outfile, "r")
 
@@ -271,7 +301,8 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False)
     targplus = int(targ)*3
     list_mnx = sorted(MnxSim, key=MnxSim.__getitem__, reverse=True)[:int(targplus)]  #allow user to manipulate window of initial rxn id list
 #    print (list_mnx)
-    f = open(os.path.join(outdir, "sequences.txt"), 'w')
+    fastaFile = os.path.join(outdir, "sequences.fasta")
+    f = open(fastaFile, "w")
     print ("Creating initial MNX list...")
     targets = set()
 #    global UprotToMnx
@@ -303,11 +334,11 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False)
                     
     f.close()
     #analysis of FinalList of sequences
-    (hydrop, weight, isoelec, polar) = pepstats(os.path.join(outdir, "sequences.txt"), outdir)
-    (helices, sheets, turns, coils) = garnier(os.path.join(outdir, "sequences.txt"), outdir)
+    (hydrop, weight, isoelec, polar) = pepstats(fastaFile, outdir)
+    (helices, sheets, turns, coils) = garnier(fastaFile, outdir)
     import pdb
     if not NoMSA:
-        cons = doMSA(os.path.join(outdir, "sequences.txt"), outdir)
+        cons = doMSA(fastaFile, outdir)
     
     print ("Acquiring sequence properties...")
     # final table, do all data and value storing before this!
@@ -326,10 +357,16 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False)
             except:
                 conservation = 0.0
 #            placeholder = float(0)
-            h = helices[y]
-            e = sheets[y]
-            t = turns[y]
-            c = coils[y]
+            try:
+                h = helices[y]
+                e = sheets[y]
+                t = turns[y]
+                c = coils[y]
+            except:
+                h = 0.0
+                e = 0.0
+                t = 0.0
+                c = 0.0
             w = weight[y]
             i = isoelec[y]
             pol = polar[y]
