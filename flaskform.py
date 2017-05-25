@@ -56,47 +56,73 @@ def upload_form():
 @app.route('/uploader', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
+
+        # check if post request has smarts part
+        smarts = request.form['smarts']
+        if len(smarts) > 0:
+            rxntype = 'smarts'
+            rxninfo = smarts
         # check if post request has file part
-        if 'file' not in request.files:
+        elif 'file' in request.files:
+            rxntype = 'rxn'
+            file = request.files['file']   
+            if file.filename == '' or not allowed_file(file.filename):
+                flash("No file selected")
+                return redirect (request.url)
+        else:
             flash('No file part')
             return redirect(request.url)
-        file = request.files['file']   
-        # if user does not select file, browser also submit empty part without fielname
-        if file.filename == '':
-            flash("No file selected")
-            return redirect (request.url)
-        if file and allowed_file(file.filename):
-            direction = 0
-            targets = request.form['targets']
-            if request.form.get('direction'):
-                direction = 1
+        direction = 0
+        noMSA = False
+        targets = request.form['targets']
+        if request.form.get('direction'):
+            direction = 1
+        if request.form.get('noMSA'):
+            noMSA = True
+        uniqueid = str(uuid.uuid4())
+        uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], uniqueid)
+        if not os.path.exists(uniquefolder):
+            os.mkdir(uniquefolder)
+        if rxntype == 'rxn':
             filename = secure_filename(file.filename)
-            uniqueid = str(uuid.uuid4())
             uniquename = file_path(uniqueid, filename)
-            uniquefolder = os.path.dirname(uniquename)
-            if not os.path.exists(uniquefolder):
-                os.mkdir(uniquefolder)
             file.save(uniquename)
-            return redirect(url_for('analysed_file', session=uniqueid, filename=filename, targets=targets, direction=direction))
+            rxnifo = filename
+        csvfile = "selenzy_results.csv"
+        Selenzy.analyse(['-'+rxntype, rxninfo], 
+                        app.config['PYTHON2'],
+                        targets,
+                        app.config['DATA_FOLDER'],  
+                        uniquefolder,
+                        csvfile,
+                        pdir = int(direction),
+                        NoMSA = noMSA
+                ) # this creates CSV file in Uploads directory
+        data = pd.read_csv(file_path(uniqueid, csvfile))
+        data.index = data.index + 1
+        return render_template('results.html', tables=data.to_html(), csvfile=csvfile)
+
     return render_template("my_form.html")
     
 @app.route('/results/<session>/files/<filename>')
 def results_file(session,filename):
     return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], session), filename)
 
-@app.route('/results/<session>/<filename>?<targets>?<direction>')    
-def analysed_file(session, filename, targets, direction):  
+@app.route('/results/<session>/<rxntype>/<rxninfo>/?<targets>?<direction>?<noMSA>')    
+def analysed_file(session, rxntype, rxninfo, targets='20', direction='0', noMSA='0'):  
     filename = file_path(session, filename)
     filenameshort = os.path.splitext(filename)[0]
     realfile = (''.join(list(filter(str.isdigit, filenameshort))))
     csvfile = os.path.basename(filenameshort)+".csv"
-    Selenzy.analyse(filename, 
+    Selenzy.analyse([rxntype, rxninfo], 
                     app.config['PYTHON2'],
                     targets,
                     app.config['DATA_FOLDER'],  
                     os.path.dirname(filename),
                     csvfile,
-                    int(direction)) # this creates CSV file in Uploads directory
+                    pdir = int(direction),
+                    NoMSA = noMSA != '0'
+    ) # this creates CSV file in Uploads directory
     data = pd.read_csv(file_path(session, csvfile))
     data.index = data.index + 1
     return render_template('results.html', tables=data.to_html(), query=realfile, csvfile=csvfile)

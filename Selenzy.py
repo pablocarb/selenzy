@@ -88,6 +88,7 @@ def readRxnCons(consensus):
     
 def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
 
+
     cmd = [p2env, 'quickRsim.py', 
            os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'fp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
     job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
