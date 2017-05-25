@@ -12,7 +12,6 @@ import csv
 import argparse
 
 
-
 def readFasta(datadir, fileFasta):
     
     from Bio import SeqIO
@@ -87,9 +86,10 @@ def readRxnCons(consensus):
         
     return (MnxDir)   
     
-def getMnxSim(rxn, p2env, datadir, outdir, drxn=0):
+def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
+
     cmd = [p2env, 'quickRsim.py', 
-           os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'fp.npz'), '-rxn', rxn, '-out', os.path.join(outdir,'results_quickRsim.txt')]
+           os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'fp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
     job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = job.communicate()
 #    print(out)
@@ -264,8 +264,10 @@ def doMSA(finallistfile, outdir):
     return (cons)
       
     
-def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False):
+def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False):
     
+
+
     datadir = os.path.join(datadir)
     outdir = os.path.join(outdir)
     
@@ -276,9 +278,10 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False)
         csvfilename = csvfilename
     else:
         csvfilename = "results_selenzy.csv"
-        
+    
+
     print ("Running quickRsim...")    
-    (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxn, p2env, datadir, outdir, pdir)
+    (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir)
 #    print(MnxSim)
 
     
@@ -399,11 +402,11 @@ def analyse(rxn, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False)
 def arguments():
     parser = argparse.ArgumentParser(description='SeqFind script for Selenzy')
     parser.add_argument('rxn', 
-                        help='Input rxn reaction file')
+                        help='Input reaction [default = rxn file]')
     parser.add_argument('p2env', 
                         help='Specify path to python 2 environment directory')
     parser.add_argument('-tar', type=float, default=20,
-                        help='Number of targets to display in results [default = 20')
+                        help='Number of targets to display in results [default = 20]')
     parser.add_argument('-d', type=float, default=0,
                         help='Use similiarity values for preferred reaction direction only [default=0 (OFF)]')
     parser.add_argument('datadir',
@@ -414,6 +417,10 @@ def arguments():
                         help='specify non-default name for CSV file output')
     parser.add_argument('-NoMSA', action='store_true',
                         help='Do not compute MSA/conservation scores')
+    parser.add_argument('-smarts', action='store_true',
+                        help='Input is a reaction SMARTS string')
+    parser.add_argument('-smartsfile', action='store_true',
+                        help='Input is a reaction SMARTS file')
     
     arg = parser.parse_args()
     return arg
@@ -425,7 +432,14 @@ if __name__ == '__main__':
     if not os.path.exists(newpath):
         os.makedirs(newpath)
     
-    analyse(arg.rxn, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d, NoMSA=arg.NoMSA)
+    if arg.smarts is not None:
+        rxnInput = ['-smarts', arg.rxn]
+    elif arg.smartsfile:
+        rxnInput = ['-smartsfile', arg.rxn]
+    else:
+        rxnInput = ['-rxn', arg.rxn]
+
+    analyse(rxnInput, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d, NoMSA=arg.NoMSA)
 
 #    from os import listdir
 #    from os.path import isfile, join

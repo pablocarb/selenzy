@@ -25,41 +25,46 @@ import math
 import numpy as np
 from rdkit import DataStructs, Chem
 from rdkit.Chem.rdMolDescriptors import GetMorganFingerprint, GetConnectivityInvariants
+from rdkit.Chem import AllChem
 
+
+def storeReaction(smi, rfile):
+    left, right = smi.split('>>')
+    subs = left.split('.')
+    prods = right.split('.')
+    sd, pd = ({},{})
+    for s in subs:
+        if s not in sd:
+            sd[s] = 0
+        sd[s] += 1
+    for p in prods:
+        if p not in pd:
+            pd[p] = 0
+        pd[p] += 1
+    rsp = {rfile: (sd, pd)}
+    return rsp
 
 def getReaction(rfile):
     rxn = rdChemReactions.ReactionFromRxnFile(rfile)
     smi = rdChemReactions.ReactionToSmiles(rxn)
-    left, right = smi.split('>>')
-    subs = left.split('.')
-    prods = right.split('.')
-    sd, pd = ({},{})
-    for s in subs:
-        if s not in sd:
-            sd[s] = 0
-        sd[s] += 1
-    for p in prods:
-        if p not in pd:
-            pd[p] = 0
-        pd[p] += 1
-    rsp = {rfile: (sd, pd)}
-    return rsp
+    return storeReaction(smi, rfile)
 
-def getReactionFromSmiles(smi):
-    left, right = smi.split('>>')
-    subs = left.split('.')
-    prods = right.split('.')
-    sd, pd = ({},{})
-    for s in subs:
-        if s not in sd:
-            sd[s] = 0
-        sd[s] += 1
-    for p in prods:
-        if p not in pd:
-            pd[p] = 0
-        pd[p] += 1
-    rsp = {rfile: (sd, pd)}
-    return rsp
+def getReactionFromSmiles(smi, rxnfile):
+    rxn = rdChemReactions.ReactionFromSmarts(smi)
+    mdl = rdChemReactions.ReactionToRxnBlock(rxn)
+    with open(rxnfile, 'w') as handler:
+        handler.write(mdl)
+    return storeReaction(smi, rxnfile)
+
+def getReactionFromSmilesFile(smartsfile, rxnfile):
+    with open(smartsfile) as handler:
+        smarts = handler.readline()
+    rxn = rdChemReactions.ReactionFromSmarts(smarts)
+    smi = rdChemReactions.ReactionToSmiles(rxn)
+    mdl = rdChemReactions.ReactionToRxnBlock(rxn)
+    with open(rxnfile, 'w') as handler:
+        handler.write(mdl)
+    return storeReaction(smi, rxnfile)
 
 def getClosest(smi, fpfile, th=0.8):
     dist = {}
@@ -69,6 +74,16 @@ def getClosest(smi, fpfile, th=0.8):
     data.close()
     radius = 5
     targetMol = Chem.MolFromSmiles(smi)
+    # If RDkit fails, we sanitize first using molconvert from ChemAxon, which is more robust
+    if targetMol is None:
+        cmd = ['molconvert', 'mol', smi]
+        cmd2 = ['molconvert', 'smiles']
+        job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        job2 = subprocess.Popen(cmd2, stdin=job.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        job.stdout.close()
+        out, err = job2.communicate()
+        targetMol = Chem.MolFromSmiles(out)
+
     targetFp = GetMorganFingerprint(targetMol, radius)
     tn = DataStructs.BulkTanimotoSimilarity(targetFp, list(fp))
     for i in sorted(range(0, len(tn))):
@@ -155,11 +170,13 @@ def arguments():
     parser.add_argument('db', help='Metanetx reaction file')
     parser.add_argument('fp', help='Babel fingerprint file for reactants')
     parser.add_argument('-rxn', 
-                        help='Input rxn reaction file')
+                        help='Input reaction rxn file')
     parser.add_argument('-rid', 
                         help='Input reaction id')
-    parser.add_argument('-rsmiles', 
-                        help='Input reaction SMILES')
+    parser.add_argument('-smarts', 
+                        help='Input reaction SMARTS')
+    parser.add_argument('-smartsfile', 
+                        help='Input reaction SMARTS file')
     parser.add_argument('-chem', 
                         help='Metanetx chemical structures (if input is reaction id)')
     parser.add_argument('-th', type=float, default=0.8, 
@@ -175,18 +192,20 @@ def arguments():
 
 if __name__ == '__main__':
     arg = arguments()
-    
     if arg.out:
         fileObj = open(arg.out, 'w')
     
     if arg.high:
         fileObj = open(arg.high, 'w')
-    
     rsp = reacSubsProds(arg.db)
     if arg.rxn is not None:
         rTarget = getReaction(arg.rxn)
-    elif arg.rsmiles is not None:
-        rTarget = getReactionFromSmiles(arg.rsmiles)
+    elif arg.smarts is not None:
+        rxnfile = os.path.join(os.path.dirname(arg.out), 'reaction.rxn')
+        rTarget = getReactionFromSmiles(arg.smarts, rxnfile)
+    elif arg.smartsfile is not None:
+        rxnfile = os.path.join(os.path.dirname(arg.out), 'reaction.rxn')
+        rTarget = getReactionFromSmilesFile(arg.smartsfile, rxnfile)        
     elif arg.rid is not None:
         struct = getStructs(arg.chem)
         rTarget = {arg.rid: [{},{}]}
@@ -201,10 +220,16 @@ if __name__ == '__main__':
     for r in rTarget:
         for s in rTarget[r][0]:
             if s not in sim:
-                sim[s] = getClosest(s, arg.fp, arg.th)
+                try:
+                    sim[s] = getClosest(s, arg.fp, arg.th)
+                except:
+                    continue
         for p in rTarget[r][1]:
             if p not in sim:
-                sim[p] = getClosest(p, arg.fp, arg.th)
+                try:
+                    sim[p] = getClosest(p, arg.fp, arg.th)
+                except:
+                    continue
     # Get reaction similarities
     for r1 in rTarget:
         s1, p1 = rTarget[r1]

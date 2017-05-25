@@ -8,6 +8,7 @@ Created on Thu Feb  9 12:20:49 2017
 import os
 import Selenzy
 from flask import Flask, flash, render_template, request, redirect, url_for, send_from_directory
+from flask_restful import Resource, Api
 from werkzeug import secure_filename
 import pandas as pd
 import numpy as np
@@ -15,9 +16,15 @@ import argparse
 import uuid
 
 app = Flask(__name__)
+api = Api(app)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
 
+class RestGate(Resource):
+    """ REST interface, returns api info """
+    def get(self):
+        return {'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem'}
 
+api.add_resource(RestGate, '/REST')
 
 def arguments():
     parser = argparse.ArgumentParser(description='Options for the webserver')
@@ -104,5 +111,5 @@ if __name__== "__main__":  #only run server if file is called directly
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
     app.config['PYTHON2'] = os.path.abspath(arg.p2env)
 
-    app.run(host="0.0.0.0",port=5000)
+    app.run(host="0.0.0.0",port=5000, debug=True)
 #    app.run(port=5000, debug=True)
