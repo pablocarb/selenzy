@@ -47,14 +47,14 @@ def storeReaction(smi, rfile):
 def getReaction(rfile):
     rxn = rdChemReactions.ReactionFromRxnFile(rfile)
     smi = rdChemReactions.ReactionToSmiles(rxn)
-    return storeReaction(smi, rfile)
+    return storeReaction(smi, rfile), smi
 
 def getReactionFromSmiles(smi, rxnfile):
     rxn = rdChemReactions.ReactionFromSmarts(smi)
     mdl = rdChemReactions.ReactionToRxnBlock(rxn)
     with open(rxnfile, 'w') as handler:
         handler.write(mdl)
-    return storeReaction(smi, rxnfile)
+    return storeReaction(smi, rxnfile), smi
 
 def getReactionFromSmilesFile(smartsfile, rxnfile):
     with open(smartsfile) as handler:
@@ -64,7 +64,7 @@ def getReactionFromSmilesFile(smartsfile, rxnfile):
     mdl = rdChemReactions.ReactionToRxnBlock(rxn)
     with open(rxnfile, 'w') as handler:
         handler.write(mdl)
-    return storeReaction(smi, rxnfile)
+    return storeReaction(smi, rxnfile), smi
 
 def getClosest(smi, fpfile, th=0.8):
     dist = {}
@@ -198,14 +198,15 @@ if __name__ == '__main__':
     if arg.high:
         fileObj = open(arg.high, 'w')
     rsp = reacSubsProds(arg.db)
+    smiles = ''
     if arg.rxn is not None:
-        rTarget = getReaction(arg.rxn)
+        rTarget, smiles = getReaction(arg.rxn)
     elif arg.smarts is not None:
         rxnfile = os.path.join(os.path.dirname(arg.out), 'reaction.rxn')
-        rTarget = getReactionFromSmiles(arg.smarts, rxnfile)
+        rTarget, smiles = getReactionFromSmiles(arg.smarts, rxnfile)
     elif arg.smartsfile is not None:
         rxnfile = os.path.join(os.path.dirname(arg.out), 'reaction.rxn')
-        rTarget = getReactionFromSmilesFile(arg.smartsfile, rxnfile)        
+        rTarget, smiles = getReactionFromSmilesFile(arg.smartsfile, rxnfile)        
     elif arg.rid is not None:
         struct = getStructs(arg.chem)
         rTarget = {arg.rid: [{},{}]}
@@ -234,23 +235,20 @@ if __name__ == '__main__':
     for r1 in rTarget:
         s1, p1 = rTarget[r1]
         for r2 in rsp:
-#            if r2 == 'MNXR70380':
-#                import pdb
-#                pdb.set_trace()
             s2, p2 = rsp[r2]
             debug = False
             S1, S2 = getRSim(s1, p1, s2, p2, sim)
             if S1 > 0 and S2 > 0:
-                print(r1, r2, S1, S2)
+                print(r1, r2, S1, S2, smiles)
                 
                 if arg.out:
-                    print(r1, r2, S1, S2, file = fileObj)
+                    print(r1, r2, S1, S2, smiles, file = fileObj)
                 
                 if arg.high:
                     if S1 >= S2:
-                        print(r1, r2, S1, file = fileObj)
+                        print(r1, r2, S1, smiles, file = fileObj)
                     else:
-                        print(r1, r2, S2, file = fileObj)
+                        print(r1, r2, S2, smiles, file = fileObj)
                         
 
                         

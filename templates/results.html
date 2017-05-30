@@ -16,13 +16,13 @@ var header2 = document.getElementsByTagName('h2')[0];
 var navigate = document.getElementsByClassName('Navigate')[0];
 var rheaTag = document.createElement('a');
 var csvTag = document.createElement('a');
-var csvlink = "files/{{csvfile}}";
+var csvlink = "/results/{{sessionid}}/files/{{csvfile}}";
 var fastaTag = document.createElement('a');
-var fastalink = "files/sequences.fasta";
+var fastalink = "/results/{{sessionid}}/files/sequences.fasta";
 var msaTag = document.createElement('a');
-var msalink = "files/sequences_score.html";
+var msalink = "/results/{{sessionid}}/files/sequences_score.html";
 var msaFastaTag = document.createElement('a');
-var msafastalink = "files/sequences_aln.fasta";
+var msafastalink = "/results/{{sessionid}}/files/sequences_aln.fasta";
 
 csvTag.setAttribute('href', csvlink);
 //csvTag.setAttribute('target', '_blank');

@@ -106,6 +106,7 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
             splitdata = line.split()
             S1 = splitdata[2]
             S2 = splitdata[3]
+            SMILES = splitdata[4]
             Mnx = splitdata[1]
 
             try:
@@ -131,7 +132,7 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
                     MnxSim[Mnx]=S2
         file.close()
             
-        return (MnxSim, MnxDirPref, MnxDirUsed)
+        return (MnxSim, MnxDirPref, MnxDirUsed, SMILES)
         
     else:
 
@@ -140,6 +141,7 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
             splitdata = line.split()
             S1 = splitdata[2]
             S2 = splitdata[3]
+            SMILES = splitdata[4]
             Mnx = splitdata[1]
             if S1 > S2:
                 MnxDirUsed[Mnx]='1'
@@ -152,8 +154,22 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
                 MnxSim[Mnx]=S2                
         file.close()              
         
-        return (MnxSim, MnxDirPref, MnxDirUsed)
+        return (MnxSim, MnxDirPref, MnxDirUsed, SMILES)
 
+def reactionSmiles(rxnSmilesFile):
+    rsmi = {}
+    with open(rxnSmilesFile) as handler:
+        header = handler.readline()
+        for line in handler:
+            row = line.rstrip().split(',')
+            if len(row) > 1:
+                rid = row[0]
+                rs1 = row[1]
+                lr = rs1.split('>>')
+                rs2 = lr[1]+'>>'+lr[0]
+                rsmi[rid] = (rs1, rs2)
+                
+    return rsmi
    
 def pepstats(file, outdir):
     outfile = os.path.join(outdir, "results.pepstats")
@@ -282,7 +298,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
     
 
     print ("Running quickRsim...")    
-    (MnxSim, MnxDirPref, MnxDirUsed) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir)
+    (MnxSim, MnxDirPref, MnxDirUsed, Smiles) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir)
 #    print(MnxSim)
 
     
@@ -297,6 +313,11 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
         
     with open ('clstrep.json') as f3:
         clstrep= json.load(f3)
+
+    smiFile = os.path.join(datadir, 'reac_smi.csv')
+    smir = {}
+    if os.path.exists(smiFile):
+        smir = reactionSmiles(smiFile)
 
 #    (clstup, upclst, clstrep) = clustar.readfile("cdhit_final.clstr")   # PUT THESE OUTSIDE, DO NOT REREAD EACH RUN
 #    
@@ -378,7 +399,13 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
             rxndirused = MnxDirUsed[mnx]
             rxndirpref = MnxDirPref[mnx]
             
-            rows.append( (y, desc, org, mnx, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol) )
+            mnxSmiles = ''
+            if mnx in smir:
+                if rxndirused == 1:
+                    mnxSmiles = smir[mnx][0]
+                else:
+                    mnxSmiles = smir[mnx][1]
+            rows.append( (y, desc, org, mnx, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
        
 #            print ("{0}\t\t{1}\t{2}\t\t{3}\t\t{4}\t\t{5}\t\t{6}\t\t{7}\t\t{8}\t\t{9}\t{10}\t\t{11}".format(repid, mnx, cn, rxndist, placeholder, h, e, t, c, w, i, pol))
         except KeyError:
@@ -394,7 +421,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
     
     with open (os.path.join(outdir, csvfilename), 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'Clust. No.', 'Rep. ID.', 'Consv. Score', 'Rxn Sim.', "Direction Used", "Direction Preferred", '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %'))
+        writer.writerow(('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'Clust. No.', 'Rep. ID.', 'Consv. Score', 'Rxn Sim.', "Direction Used", "Direction Preferred", '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %','Query', 'Hit'))
         for r in sortrows:
             writer.writerow(r)
     print ("CSV file created.")
@@ -422,7 +449,6 @@ def arguments():
                         help='Input is a reaction SMARTS string')
     parser.add_argument('-smartsfile', action='store_true',
                         help='Input is a reaction SMARTS file')
-    
     arg = parser.parse_args()
     return arg
 
