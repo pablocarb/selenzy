@@ -133,6 +133,18 @@ def upload_file():
             noMSA = True
         data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, noMSA)
         return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
+    elif request.method == 'GET':
+        smarts = request.args.get('smarts')
+        if smarts is None:
+            return redirect(request.url)
+        rxntype = 'smarts'
+        rxninfo = smarts
+        direction = 0
+        noMSA = False
+        targets = 20
+        data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, noMSA)
+        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
+
 
     return render_template("my_form.html")
     

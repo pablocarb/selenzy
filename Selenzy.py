@@ -99,6 +99,7 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
     MnxSim = {}
     MnxDirPref = readRxnCons(os.path.join(datadir, "rxn_consensus_20160612.txt"))
     MnxDirUsed = {}
+    EcNumber = {}
     
     if drxn==1:
         file = open(os.path.join(outdir, "results_quickRsim.txt"), 'r')
@@ -107,8 +108,11 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
             S1 = splitdata[2]
             S2 = splitdata[3]
             SMILES = splitdata[4]
+            EC = ''
+            if len(splitdata) > 5:
+                EC = splitdata[5]
             Mnx = splitdata[1]
-
+            EcNumber[Mnx] = EC
             try:
                 direction = MnxDirPref[Mnx] 
                 if direction == '1':
@@ -132,7 +136,7 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
                     MnxSim[Mnx]=S2
         file.close()
             
-        return (MnxSim, MnxDirPref, MnxDirUsed, SMILES)
+        return (MnxSim, MnxDirPref, MnxDirUsed, SMILES, EcNumber)
         
     else:
 
@@ -142,7 +146,11 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
             S1 = splitdata[2]
             S2 = splitdata[3]
             SMILES = splitdata[4]
+            EC = ''
+            if len(splitdata) > 5:
+                EC = splitdata[5]
             Mnx = splitdata[1]
+            EcNumber[Mnx] = EC
             if S1 > S2:
                 MnxDirUsed[Mnx]='1'
                 MnxSim[Mnx]=S1
@@ -154,7 +162,7 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
                 MnxSim[Mnx]=S2                
         file.close()              
         
-        return (MnxSim, MnxDirPref, MnxDirUsed, SMILES)
+        return (MnxSim, MnxDirPref, MnxDirUsed, SMILES, EcNumber)
 
 def reactionSmiles(rxnSmilesFile):
     rsmi = {}
@@ -298,10 +306,9 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
     
 
     print ("Running quickRsim...")    
-    (MnxSim, MnxDirPref, MnxDirUsed, Smiles) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir)
-#    print(MnxSim)
+    (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir)
 
-    
+
     print ("Acquiring databases...")
     (sequence, names, descriptions, osource) = readFasta(datadir, "seqs.fasta")
     
@@ -361,7 +368,6 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
     #analysis of FinalList of sequences
     (hydrop, weight, isoelec, polar) = pepstats(fastaFile, outdir)
     (helices, sheets, turns, coils) = garnier(fastaFile, outdir)
-    import pdb
     if not NoMSA:
         cons = doMSA(fastaFile, outdir)
     
@@ -381,8 +387,12 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
                 conservation = float(cons[y])
             except:
                 conservation = 0.0
-#            placeholder = float(0)
             try:
+                ecid = EcNumber[mnx]
+            except:
+                ecid = ''
+            try:
+
                 h = helices[y]
                 e = sheets[y]
                 t = turns[y]
@@ -405,13 +415,13 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
                     mnxSmiles = smir[mnx][0]
                 else:
                     mnxSmiles = smir[mnx][1]
-            rows.append( (y, desc, org, mnx, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
+            rows.append( (y, desc, org, mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
        
 #            print ("{0}\t\t{1}\t{2}\t\t{3}\t\t{4}\t\t{5}\t\t{6}\t\t{7}\t\t{8}\t\t{9}\t{10}\t\t{11}".format(repid, mnx, cn, rxndist, placeholder, h, e, t, c, w, i, pol))
         except KeyError:
             pass
 
-    sortrows = sorted(rows, key = lambda x: (-x[7], -x[6]) )
+    sortrows = sorted(rows, key = lambda x: (-x[8], -x[7]) )
 
 #    f2 = open((os.path.join("uploads/table_"+rxnname+".txt")), 'w')
 #    print ("Seq ID" + "\t\t" + "Rxn ID"+ "\t\t"+ "Clust. No." + "\t" + "Rep. ID."+ "\t" + "Rxn Sim."+ "\t" + "Consv. Score" + "\t" + "% helices" + "\t" + "% sheets" + "\t" + "% turns" + "\t\t" + "% coils" + "\t\t" + "Mol. Weight" + "\t" + "Isoelec. Point" + "\t" + "Polar %", file = f2)
@@ -421,7 +431,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
     
     with open (os.path.join(outdir, csvfilename), 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'Clust. No.', 'Rep. ID.', 'Consv. Score', 'Rxn Sim.', "Direction Used", "Direction Preferred", '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %','Query', 'Hit'))
+        writer.writerow(('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score', 'Rxn Sim.', "Direction Used", "Direction Preferred", '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %','Query', 'Hit'))
         for r in sortrows:
             writer.writerow(r)
     print ("CSV file created.")

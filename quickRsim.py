@@ -115,8 +115,9 @@ def reacSubsProds(dbfile):
         left, right = m[1].split(' = ')
         subs = getReactants(left)
         prods = getReactants(right)
+        ec = m[4]
         if len(subs) > 0 and len(prods) > 0:
-            rsp[rid] = (subs, prods)
+            rsp[rid] = (subs, prods, ec)
     return rsp
 
 def getStructs(dbfile):
@@ -235,20 +236,20 @@ if __name__ == '__main__':
     for r1 in rTarget:
         s1, p1 = rTarget[r1]
         for r2 in rsp:
-            s2, p2 = rsp[r2]
+            s2, p2, ec2 = rsp[r2]
             debug = False
             S1, S2 = getRSim(s1, p1, s2, p2, sim)
             if S1 > 0 and S2 > 0:
-                print(r1, r2, S1, S2, smiles)
+                print(r1, r2, S1, S2, smiles, ec2)
                 
                 if arg.out:
-                    print(r1, r2, S1, S2, smiles, file = fileObj)
+                    print(r1, r2, S1, S2, smiles, ec2, file = fileObj)
                 
                 if arg.high:
                     if S1 >= S2:
-                        print(r1, r2, S1, smiles, file = fileObj)
+                        print(r1, r2, S1, smiles, ec2, file = fileObj)
                     else:
-                        print(r1, r2, S2, smiles, file = fileObj)
+                        print(r1, r2, S2, smiles, ec2, file = fileObj)
                         
 
                         
