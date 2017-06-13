@@ -27,3 +27,25 @@ tr:nth-child(even)	{ background-color:#fff; }
 
 tr:hover            { background-color: #ffff99;}
 
+.head {
+    float: left;
+    display: inline;
+}
+.uarr {
+    width: 10px;
+    float: right;
+    display: inline;
+    cursor: hand;
+    cursor: pointer;
+    cursor: hand;
+}
+.darr {
+    width: 10px;
+    float: right;
+    display: inline;
+    cursor: pointer;
+    cursor: hand;
+}
+.footcell {
+    clear: both;
+}

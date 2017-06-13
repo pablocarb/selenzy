@@ -13,11 +13,13 @@
     </div>
   <div style="float: right;" class="Return"><a href="/">[New query]</a></div>
   <div style="clear: both;"></div>
+  <div class="Filter"></div>
   <h2></h2>
     {{ tables|safe }}
 
 </div>
 <script>
+var sessionid = "{{sessionid}}";
 var header2 = document.getElementsByTagName('h2')[0];
 var navigate = document.getElementsByClassName('Navigate')[0];
 var rheaTag = document.createElement('a');

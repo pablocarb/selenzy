@@ -4,4 +4,23 @@ h1, h2          { margin: 5; }
 h1              { border-bottom: 2px solid #eee; }
 h2              { font-size: 1.2em; }
 
-
+.mainframe { 
+}
+.logo {
+    float: left;
+    width: 140px;
+    margin: 0x;
+    padding: 5px;
+}
+.input {
+    float: left;
+}
+.canvas {
+}
+.foot {
+    clear: both;
+}
+.reaction, .ui-widget-shadow .ui-corner-all {
+}
+.options {
+}

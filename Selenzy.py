@@ -12,6 +12,13 @@ import csv
 import argparse
 
 
+def display_reaction(rxninfo):
+    """ It works both with the smiles string or a rxn file """
+    cmd = ['molconvert', 'svg:w500', rxninfo]
+    job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = job.communicate()
+    return out
+
 def readFasta(datadir, fileFasta):
     
     from Bio import SeqIO
@@ -287,11 +294,41 @@ def doMSA(finallistfile, outdir):
             cons[upid] = score
             
     return (cons)
-      
+
+def read_csv(csvfile):
+    rows = []
+    if os.path.exists(csvfile):
+        with open(csvfile) as handler:
+            cv = csv.reader(handler)
+            head = next(cv)
+            for row in cv:
+                rows.append(row)
+    return head, rows
+
+def write_csv(csvfilepath, head, rows):
+    with open (csvfilepath, 'w') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(head)
+        for r in rows:
+            writer.writerow(r)
+
+
+def sort_rows(rows, columns):
+    for i in range(len(columns), 0, -1):
+        key = columns[i-1]
+        if key != 0:
+            if key < 0:
+                try:
+                    rows.sort(key = lambda x: -float(x[abs(key-1)]))
+                except:
+                    rows.sort(key = lambda x: x[abs(key-1)], reverse=True)
+            else:
+                rows.sort(key = lambda x: x[key-1])
+    return rows
+
     
 def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False):
     
-
 
     datadir = os.path.join(datadir)
     outdir = os.path.join(outdir)
@@ -417,23 +454,18 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
                     mnxSmiles = smir[mnx][1]
             rows.append( (y, desc, org, mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
        
-#            print ("{0}\t\t{1}\t{2}\t\t{3}\t\t{4}\t\t{5}\t\t{6}\t\t{7}\t\t{8}\t\t{9}\t{10}\t\t{11}".format(repid, mnx, cn, rxndist, placeholder, h, e, t, c, w, i, pol))
         except KeyError:
             pass
 
-    sortrows = sorted(rows, key = lambda x: (-x[8], -x[7]) )
+    sortrows = sort_rows(rows, (-8, -7, -7) )
 
-#    f2 = open((os.path.join("uploads/table_"+rxnname+".txt")), 'w')
-#    print ("Seq ID" + "\t\t" + "Rxn ID"+ "\t\t"+ "Clust. No." + "\t" + "Rep. ID."+ "\t" + "Rxn Sim."+ "\t" + "Consv. Score" + "\t" + "% helices" + "\t" + "% sheets" + "\t" + "% turns" + "\t\t" + "% coils" + "\t\t" + "Mol. Weight" + "\t" + "Isoelec. Point" + "\t" + "Polar %", file = f2)
-#    for r in sortrows:
-#        print ('\t'.join(map(str, r)))
-#    f2.close()
-    
-    with open (os.path.join(outdir, csvfilename), 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score', 'Rxn Sim.', "Direction Used", "Direction Preferred", '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %','Query', 'Hit'))
-        for r in sortrows:
-            writer.writerow(r)
+
+    head = ('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score',
+            'Rxn Sim.', "Direction Used", "Direction Preferred",
+            '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %','Query', 'Hit')
+
+    write_csv(os.path.join(outdir, csvfilename), head, sortrows)
+
     print ("CSV file created.")
     
     
