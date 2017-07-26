@@ -35,6 +35,7 @@ function sortTable(valueSelected) {
 	    $('.Selenzy').replaceWith(data.data.csv);
 	    $('.dataframe').addClass('Selenzy');
 	    addArrows();
+	    addLinks();
 	},
 	error : function() {
 	    console.log('Sorry, no luck');
@@ -69,12 +70,47 @@ function addArrows() {
 
 }
 
+function addLinks() {
+    var rows = document.getElementsByTagName('tr');
+    for (var i = 1; i < rows.length; i++)	{
+
+	var seqID = rows[i].getElementsByTagName('td')[0];
+	var rxnID = rows[i].getElementsByTagName('td')[4];
+
+	var seqlink = "//www.uniprot.org/uniprot/" + rows[i].getElementsByTagName('td')[0].innerHTML;
+
+	var rxnlink = "http://www.metanetx.org/cgi-bin/mnxweb/equa_info?equa=" + rows[i].getElementsByTagName('td')[4].innerHTML;
+
+	var aTag = document.createElement('a');
+	var bTag = document.createElement('a');
+	
+
+	aTag.setAttribute('href', seqlink);
+	aTag.setAttribute('target', '_blank');
+	bTag.setAttribute('href', rxnlink);
+	bTag.setAttribute('target', '_blank');
+
+	aTag.innerHTML = rows[i].getElementsByTagName('td')[0].innerHTML;
+	bTag.innerHTML = rows[i].getElementsByTagName('td')[4].innerHTML;
+
+	seqID.replaceChild(aTag, seqID.childNodes[0]);
+	rxnID.replaceChild(bTag, rxnID.childNodes[0]);
+
+    }
+}
+
+
+
+
+
 // Main jQuery call
 $(document)
     .ready(
 	function() {
 
 	    $('.dataframe').addClass('Selenzy');
+
+	    addLinks();
 
 	    selectors = addFilter(3);
 

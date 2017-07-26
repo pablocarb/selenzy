@@ -18,6 +18,7 @@
     {{ tables|safe }}
 
 </div>
+
 <script>
 var sessionid = "{{sessionid}}";
 var header2 = document.getElementsByTagName('h2')[0];
@@ -47,38 +48,10 @@ msaTag.setAttribute('href', msalink);
 msaTag.setAttribute('target', '_blank');
 msaTag.innerHTML = "[View MSA]";
 
-
 navigate.appendChild(csvTag)
 navigate.appendChild(fastaTag)
 navigate.appendChild(msaFastaTag)
 navigate.appendChild(msaTag)
 
-var rows = document.getElementsByTagName('tr');
-
-for (var i = 1; i < rows.length; i++)	{
-
-	var seqID = rows[i].getElementsByTagName('td')[0];
-	var rxnID = rows[i].getElementsByTagName('td')[3];
-
-	var seqlink = "//www.uniprot.org/uniprot/" + rows[i].getElementsByTagName('td')[0].innerHTML;
-
-	var rxnlink = "http://www.metanetx.org/cgi-bin/mnxweb/equa_info?equa=" + rows[i].getElementsByTagName('td')[3].innerHTML;
-
-	var aTag = document.createElement('a');
-	var bTag = document.createElement('a');
-	
-
-	aTag.setAttribute('href', seqlink);
-	aTag.setAttribute('target', '_blank');
-	bTag.setAttribute('href', rxnlink);
-	bTag.setAttribute('target', '_blank');
-
-	aTag.innerHTML = rows[i].getElementsByTagName('td')[0].innerHTML;
-	bTag.innerHTML = rows[i].getElementsByTagName('td')[3].innerHTML;
-
-	seqID.replaceChild(aTag, seqID.childNodes[0]);
-	rxnID.replaceChild(bTag, rxnID.childNodes[0]);
-
-}
 </script>
 

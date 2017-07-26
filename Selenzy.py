@@ -12,12 +12,39 @@ import csv
 import argparse
 
 
+def sanitize_reaction(rxninfo):
+    """ It works both with the smiles string or a rxn file """
+
+
 def display_reaction(rxninfo):
     """ It works both with the smiles string or a rxn file """
     cmd = ['molconvert', 'svg:w500', rxninfo]
     job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = job.communicate()
     return out
+
+def seqOrganism(datadir, fileSeqOrg):
+    seqorg = {}
+    for line in open(os.path.join(datadir, fileSeqOrg)):
+        row = line.rstrip().split('\t')
+        seqorg[ row[0] ] = row[1]
+    return seqorg
+
+def readTaxonomy(datadir, fileLineage):
+    tax = {}
+    with open(os.path.join(datadir, fileLineage)) as handler:
+        for row in csv.reader(handler):
+            tax[row[0]] = row
+    return tax
+
+def taxDistance(tax, host, target):
+    if host in tax and target in tax:
+        hostLineage = set(tax[host])
+        targetLineage = set(tax[target])
+        distance = 1 + len(hostLineage ^ targetLineage)
+        return distance
+    else:
+        return '-'
 
 def readFasta(datadir, fileFasta):
     
@@ -319,15 +346,15 @@ def sort_rows(rows, columns):
         if key != 0:
             if key < 0:
                 try:
-                    rows.sort(key = lambda x: -float(x[abs(key-1)]))
+                    rows.sort(key = lambda x: -float(x[abs(key)-1]))
                 except:
-                    rows.sort(key = lambda x: x[abs(key-1)], reverse=True)
+                    rows.sort(key = lambda x: x[abs(key)-1], reverse=True)
             else:
                 rows.sort(key = lambda x: x[key-1])
     return rows
 
     
-def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=False):
+def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False):
     
 
     datadir = os.path.join(datadir)
@@ -348,6 +375,9 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
 
     print ("Acquiring databases...")
     (sequence, names, descriptions, osource) = readFasta(datadir, "seqs.fasta")
+
+    seqorg = seqOrganism(datadir, "seq_org.tsv")
+    tax = readTaxonomy(datadir, "org_lineage.csv")
     
     with open('MnxToUprot.json') as f:
         MnxToUprot = json.load(f)
@@ -410,6 +440,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
     
     print ("Acquiring sequence properties...")
     # final table, do all data and value storing before this!
+    tdist = {}
     rows = []
     for y in targets:
         try:
@@ -452,15 +483,20 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, NoMSA=F
                     mnxSmiles = smir[mnx][0]
                 else:
                     mnxSmiles = smir[mnx][1]
-            rows.append( (y, desc, org, mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
+            if org not in tdist:
+                if y in seqorg:
+                    tdist[org] = taxDistance(tax, host, seqorg[y])
+                else:
+                    tdist[org] = '-'
+            rows.append( (y, desc, org, tdist[org], mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
        
         except KeyError:
             pass
 
-    sortrows = sort_rows(rows, (-8, -7, -7) )
+    sortrows = sort_rows(rows, (-10, 4, -9) )
 
 
-    head = ('Seq. ID','Description', 'Organism Source', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score',
+    head = ('Seq. ID','Description', 'Organism Source', 'Tax. distance', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score',
             'Rxn Sim.', "Direction Used", "Direction Preferred",
             '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %','Query', 'Hit')
 
@@ -491,6 +527,8 @@ def arguments():
                         help='Input is a reaction SMARTS string')
     parser.add_argument('-smartsfile', action='store_true',
                         help='Input is a reaction SMARTS file')
+    parser.add_argument('-host', type=str, default='83333',
+                        help='Host organism taxon id [default: E. coli]')
     arg = parser.parse_args()
     return arg
 
@@ -508,7 +546,7 @@ if __name__ == '__main__':
     else:
         rxnInput = ['-rxn', arg.rxn]
 
-    analyse(rxnInput, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d, NoMSA=arg.NoMSA)
+    analyse(rxnInput, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d, arg.host, NoMSA=arg.NoMSA)
 
 #    from os import listdir
 #    from os.path import isfile, join

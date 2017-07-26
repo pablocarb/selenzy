@@ -12,7 +12,7 @@
   <div class="mainframe">
   <div class="logo">
     <center>
-    <img src='/static/SYNBIOCHEM.png' alt='SYNBIOCHEM' /> <br />
+    <img src="{{url_for('static', filename='resources/png/SYNBIOCHEM.png')}}" alt='SYNBIOCHEM' /> <br />
     SYNBIOCHEM <b>Selenzy</b> <br/>
     Enzyme Selection Tool <p />
     </center>
@@ -27,20 +27,41 @@
 
 	<div class="reaction">
 	<form action="uploader" method="POST" enctype = "multipart/form-data" id="front">
-		Reaction [rxn]: <input type="file" name="file" id="rxn" /><br/>
+	  <div class="rquery">
+	    Reaction [rxn, smi]: <input type="file" name="file" id="rxn" />
+	  <br/>
 		Reaction [SMARTS]: <input type="text" name="smarts" id="smarts"/><br/>
+	  </div>
+	  <div class="Info1"> 
+	    <img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/><br/>
+	    <span class="Message">Uploading...</span>
+	  </div>
+	  <div style="clear:both" />
 	</form>
 	</div>
 	</fieldset>
 	<fieldset>
 	<legend>Options</legend>
 	<div class="options ui-corner-all">
+	  <div class="opt">
 	  <form action="uploader" method="POST" id="options">
-		Retrieve table [csv]: <input type="file" name="csv"/><br/>
+<!--		Retrieve table [csv]: <input type="file" name="csv"/><br/> -->
 		 Targets (default: 20): <input type="number" name="targets" value="20"/> <br/>
 		<input type="checkbox" name="direction"/> Use only consensus reaction direction.<br/>
 		<input type="checkbox" name="noMSA"/> No MSA (faster). <br/>
+		Host: <select name="host">
+		  <option value="83333">Escherichia coli K-12</option>
+		  <option value="4932">Saccharomyces cerevisiae</option>
+		  </select>
 		<input type="submit" value="Upload" id="upload" disabled="disabled" />
+	  </div>
+	  <div class="Info2"> 
+	    <img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/><br/>
+	    <span class="Message">Selecting enzymes...<br/></span>
+	  </div>
+	  <div style="clear:both" />
+
+
 	</form>
 	</div>
          </fieldset>

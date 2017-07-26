@@ -5,7 +5,7 @@ Created on Thu Feb  9 12:20:49 2017
 
 @author: jerrywzy
 """
-import os
+import os, subprocess
 import Selenzy
 from flask import Flask, flash, render_template, request, redirect, url_for, send_from_directory, jsonify
 from flask_restful import Resource, Api
@@ -48,8 +48,12 @@ def save_rxn(rxninfo):
     filename = secure_filename(rxninfo.filename)
     uniquename = file_path(session['uniqueid'], filename)
     rxninfo.save(uniquename)
-    session['rxninfo'] = uniquename
-    return uniquename
+    outname = file_path(session['uniqueid'], session['uniqueid']+'.rxn')
+    cmd = ['molconvert', 'rxn', uniquename, '-o', outname]
+    job = subprocess.Popen(cmd)
+    out, err = job.communicate()
+    session['rxninfo'] = outname
+    return outname
 
 def init_session():
     reset_session()
@@ -65,7 +69,7 @@ def reset_session():
     uniqueid = str(uuid.uuid4())
     session['uniqueid'] = uniqueid
 
-def run_session(rxntype, rxninfo, targets, direction, noMSA):
+def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
     uniqueid = session['uniqueid']
     uniquefolder = session['uniquefolder']
     csvfile = "selenzy_results.csv"
@@ -76,6 +80,7 @@ def run_session(rxntype, rxninfo, targets, direction, noMSA):
                     uniquefolder,
                     csvfile,
                     pdir = int(direction),
+                    host = host,
                     NoMSA = noMSA
     ) # this creates CSV file in Uploads directory
     data = pd.read_csv(file_path(uniqueid, csvfile))
@@ -122,8 +127,12 @@ class RestQuery(Resource):
                 noMSA = args['noMSA']
             else:
                 noMSA = True
+            if 'host' in args:
+                host = args['host']
+            else:
+                host = '83333'
             init_session()
-            data, csvfile, session = run_session(rxntype, rxninfo, targets, direction, noMSA)
+            data, csvfile, session = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
             return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': data.to_json()})
 
 
@@ -201,7 +210,6 @@ def sort_table():
     """ Sorts table """
     if request.method == 'POST':
         jfilter = json.loads(request.values.get('filter'))
-        print(jfilter)
         try:
             filt = [int(x) for x in jfilter]
         except:
@@ -239,17 +247,21 @@ def upload_file():
         direction = 0
         noMSA = False
         targets = request.form['targets']
+        host = request.form['host']
         if request.form.get('direction'):
             direction = 1
         if request.form.get('noMSA'):
             noMSA = True
         
-        data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, noMSA)
+        data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
         return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
     elif request.method == 'GET':
         smarts = request.args.get('smarts')
         if smarts is None:
             return redirect(request.url)
+        host = request.args.get('host')
+        if smarts is None:
+            host = '83333'
         rxntype = 'smarts'
         rxninfo = smarts
         direction = 0
@@ -258,7 +270,7 @@ def upload_file():
         init_session()
         session['rxninfo'] = rxninfo
         session['rxntype'] = rxntype
-        data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, noMSA)
+        data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
         return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
     return render_template("my_form.html")
     

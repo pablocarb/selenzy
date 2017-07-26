@@ -24,3 +24,23 @@ h2              { font-size: 1.2em; }
 }
 .options {
 }
+.rquery {
+    float: left;
+}
+.Info1 {
+    float: left;
+    visibility: hidden;
+    align: middle;
+}
+.opt {
+    float: left;
+}
+.Info2 {
+    float: left;
+    visibility: hidden;
+    align: middle;
+}
+.Message {
+    text-align:center; 
+    font-size: x-small;
+}
