@@ -20,9 +20,12 @@ tables.dataframe, .dataframe th, .dataframe td {
     color: white;
 }
 
+tr {
+    title: 
+}
 
 
-tr:nth-child(odd)		{ background-color:#eee; }
+tr:nth-child(odd)	{ background-color:#eee; }
 tr:nth-child(even)	{ background-color:#fff; }
 
 tr:hover            { background-color: #ffff99;}
@@ -48,4 +51,10 @@ tr:hover            { background-color: #ffff99;}
 }
 .footcell {
     clear: both;
+}
+tr.selected {
+    background-color:  #c6e81b;
+}
+th.selected {
+    background-color:  #c6e81b;
 }

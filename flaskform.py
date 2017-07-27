@@ -18,8 +18,6 @@ import uuid
 import json
 import csv
 
-
-
 app = Flask(__name__)
 api = Api(app)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
@@ -85,6 +83,7 @@ def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
     ) # this creates CSV file in Uploads directory
     data = pd.read_csv(file_path(uniqueid, csvfile))
     data.index = data.index + 1
+    data.rename_axis('Select', axis="columns")
     return data, csvfile, uniqueid
 
     
@@ -99,6 +98,7 @@ def retrieve_session(csvinfo):
     data = pd.read_csv(uniquename)
     data.index = data.index + 1
     csvfile = os.path.basename(uniquename)
+    data.rename_axis('Select', axis="columns")
     return data, csvfile, uniqueid
 
 
@@ -222,8 +222,45 @@ def sort_table():
         Selenzy.write_csv(csvfile, head, sortrows)
         data = pd.read_csv(csvfile)
         data.index = data.index + 1
+        data.rename_axis('Select', axis="columns")
+        return json.dumps( {'data': {'csv':  data.to_html(), 'filter': filt}} )
+
+@app.route('/remover', methods=['POST'])
+def delete_rows():
+    """ Sorts table """
+    if request.method == 'POST':
+        selrows = json.loads(request.values.get('filter'))
+        session = json.loads(request.values.get('session'))
+        csvname = os.path.basename(json.loads(request.values.get('csv')))
+        csvfile = os.path.join(app.config['UPLOAD_FOLDER'], session, csvname)
+        head, rows = Selenzy.read_csv(csvfile)
+        filt = []
+        for i in selrows:
+            try:
+                index = int(i) - 1
+                filt.append(index)
+            except:
+                continue
+        newrows = []
+        for j in range(0, len(rows)):
+            if j not in filt:
+                newrows.append(rows[j])
+        Selenzy.write_csv(csvfile, head, newrows)
+        data = pd.read_csv(csvfile)
+        data.index = data.index + 1
+        data.rename_axis('Select', axis="columns")
         return json.dumps( {'data': {'csv':  data.to_html()}} )
                           
+
+
+@app.route('/debug', methods=['GET'])
+def show_table():
+    csvfile = os.path.join('uploads', 'debug', 'selenzy_results.csv')
+    data = pd.read_csv(csvfile)
+    data.index = data.index + 1
+    sessionid = 'debug'
+    data.rename_axis('Select', axis="columns")
+    return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
 
 
 @app.route('/uploader', methods=['GET', 'POST'])

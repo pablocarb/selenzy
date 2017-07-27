@@ -1,4 +1,24 @@
 
+function formatTable(csvdata) {
+    $('.dataframe').addClass('Selenzy');
+    addSorted();
+    addLinks();
+    addSelection();
+    $( '.Remove').click( function(event) {
+	if ( confirm('Do you want to remove permanently selected rows?') ) {
+	    deleteRows();
+	    }
+    });
+}
+
+function formatHeader(filt) {
+    for (i=0; i < filt.length; i++) {
+	xval = filt[i];
+	if (xval > 0) {
+	    $( $('thead th')[xval]).attr("sort", "up");
+	   }
+    }
+}
 
 function addFilter(nFilters) {
     var columns = [];
@@ -33,14 +53,65 @@ function sortTable(valueSelected) {
 	success : function(serverdata) {
 	    data = JSON.parse(serverdata);
 	    $('.Selenzy').replaceWith(data.data.csv);
-	    $('.dataframe').addClass('Selenzy');
-	    addArrows();
-	    addLinks();
+	    formatTable();
+	    formatHeader(data.data.filter);
 	},
 	error : function() {
 	    console.log('Sorry, no luck');
 	}
     });
+}
+
+function deleteRows() {
+    // Delete selected rows
+    $.ajax({	
+	data : {
+	    filter : JSON.stringify(selectedRows()),
+	    csv : JSON.stringify(csvlink),
+	    session: JSON.stringify(sessionid),
+	    event: JSON.stringify(event.timeStamp)
+	},
+	type : 'POST',
+	url : '/remover',
+	success : function(serverdata) {
+	    data = JSON.parse(serverdata);
+	    $('.Selenzy').replaceWith(data.data.csv);
+	    formatTable();
+	},
+	error : function() {
+	    console.log('Sorry, no luck');
+	}
+    });
+}
+
+function selectedRows() {
+    // Returns an array with the indices of selected rows
+    var index = [];
+    $.each( $( 'tbody th.selected'), function( i, value) {
+	index[i] = $( value ).text();
+    });
+    return(index);
+
+}
+
+function addSorted() {
+       $('thead th').each(
+	   function( index, value) {
+	       $( this ).attr( "index", index.toString());
+	       $( this ).attr( "sort", "down");
+	       $( this ).click(
+		   function() {
+		       if (this.getAttribute("sort") == "up") {
+			   $( this ).attr("sort", "down");
+			   sortTable([-parseInt(this.getAttribute("index"))]);
+		      } else {
+			   $( this ).attr("sort", "up");
+			   sortTable([parseInt(this.getAttribute("index"))]);
+		      }
+		   }
+		   );
+	   }
+	   );
 }
 
 function addArrows() {
@@ -100,7 +171,22 @@ function addLinks() {
 }
 
 
+function addSelection() {
+    $('.Selenzy tr th').click(
+	function(event) {
+	    if ($( this ).hasClass('selected')) {
+		$( this ).removeClass('selected');
+		$( this ).parent().removeClass('selected');
+	    } else {
+		$( this ).addClass('selected');
+		$( this ).parent().addClass('selected');
+	    }
+	}
+    );
+    
+    $('.Selenzy tbody tr th').attr('title', 'Click to select');
 
+}
 
 
 // Main jQuery call
@@ -108,11 +194,9 @@ $(document)
     .ready(
 	function() {
 
-	    $('.dataframe').addClass('Selenzy');
-
-	    addLinks();
-
 	    selectors = addFilter(3);
+
+	    formatTable();
 
 	    // $('.prior').selectmenu({
 	    // 	change: function(event) {
@@ -125,8 +209,6 @@ $(document)
 	    // 	    sortTable(optionsFilter);
 	    // 	    }
 	    // 	});
-
-	    addArrows();
 
 
 	}
