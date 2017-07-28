@@ -493,7 +493,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='8
         except KeyError:
             pass
 
-    sortrows = sort_rows(rows, (-10, 4, -9) )
+    sortrows = sort_rows(rows, (-10, -9, 4) )
 
 
     head = ('Seq. ID','Description', 'Organism Source', 'Tax. distance', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score',
