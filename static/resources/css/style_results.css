@@ -34,21 +34,6 @@ tr:hover            { background-color: #ffff99;}
     float: left;
     display: inline;
 }
-.uarr {
-    width: 10px;
-    float: right;
-    display: inline;
-    cursor: hand;
-    cursor: pointer;
-    cursor: hand;
-}
-.darr {
-    width: 10px;
-    float: right;
-    display: inline;
-    cursor: pointer;
-    cursor: hand;
-}
 .footcell {
     clear: both;
 }
@@ -57,4 +42,39 @@ tr.selected {
 }
 th.selected {
     background-color:  #c6e81b;
+}
+.Selector {
+    margin-left: 10px;
+    margin-right: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-style: groove;
+    border-width: 1px;
+    background-color: rgba(163, 255, 188, 0.25);
+}
+.Filter {
+    float: left;
+}
+.Navigate {
+    float: left;
+}
+.Remove {
+    float: left;
+}
+.Return {
+    float: right;
+}
+.disabledbutton {
+    pointer-events: none;
+    opacity: 0.4;
+}
+.item {
+    padding-left: 2px;
+    padding-right: 2px;
+}
+.active {
+    text-decoration: underline;
+    cursor: pointer;
 }

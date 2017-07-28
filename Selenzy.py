@@ -27,7 +27,7 @@ def seqOrganism(datadir, fileSeqOrg):
     seqorg = {}
     for line in open(os.path.join(datadir, fileSeqOrg)):
         row = line.rstrip().split('\t')
-        seqorg[ row[0] ] = row[1]
+        seqorg[ row[0] ] = (row[1], row[2])
     return seqorg
 
 def readTaxonomy(datadir, fileLineage):
@@ -485,7 +485,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='8
                     mnxSmiles = smir[mnx][1]
             if org not in tdist:
                 if y in seqorg:
-                    tdist[org] = taxDistance(tax, host, seqorg[y])
+                    tdist[org] = taxDistance(tax, host, seqorg[y][0])
                 else:
                     tdist[org] = '-'
             rows.append( (y, desc, org, tdist[org], mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )

@@ -1,13 +1,20 @@
 
 function formatTable(csvdata) {
     $('.dataframe').addClass('Selenzy');
+    $('.Selenzy th').each( function(index, value) {
+	$( this ).addClass('active');
+	});
+
     addSorted();
     addLinks();
     addSelection();
+    $( '.Remove' ).addClass('disabledbutton');
     $( '.Remove').click( function(event) {
-	if ( confirm('Do you want to remove permanently selected rows?') ) {
-	    deleteRows();
+	if (selectedRows().length > 0) {
+	    if ( confirm('Do you want to remove permanently selected rows?') ) {
+		deleteRows();
 	    }
+	  }
     });
 }
 
@@ -15,7 +22,7 @@ function formatHeader(filt) {
     for (i=0; i < filt.length; i++) {
 	xval = filt[i];
 	if (xval > 0) {
-	    $( $('thead th')[xval]).attr("sort", "up");
+	    $( $('thead th')[xval]).attr("sort", "up").attr("title", "Sort by column");
 	   }
     }
 }
@@ -30,7 +37,7 @@ function addFilter(nFilters) {
 	);
     var selectors = []
     for (i=0; i < nFilters; i++) {
-	selectors[i] = $('<select>' ).addClass('prior').attr('id', 'sel'+parseInt(i));
+	selectors[i] = $('<select>' ).addClass('prior item').attr('id', 'sel'+parseInt(i));
 	for (x = 0; x < columns.length; x++) {
 	    selectors[i].append( $('<option>', {value:x, text:columns[x]}) );
 	}
@@ -76,7 +83,10 @@ function deleteRows() {
 	success : function(serverdata) {
 	    data = JSON.parse(serverdata);
 	    $('.Selenzy').replaceWith(data.data.csv);
+	    // Avoid propagation of the click event
+	    $( '.Remove').off("click");
 	    formatTable();
+
 	},
 	error : function() {
 	    console.log('Sorry, no luck');
@@ -99,6 +109,7 @@ function addSorted() {
 	   function( index, value) {
 	       $( this ).attr( "index", index.toString());
 	       $( this ).attr( "sort", "down");
+	       $( this ).attr( "title", "Sort by column");
 	       $( this ).click(
 		   function() {
 		       if (this.getAttribute("sort") == "up") {
@@ -114,32 +125,27 @@ function addSorted() {
 	   );
 }
 
-function addArrows() {
-    $('thead th').each(
-	function( index, value ) {
-	    if (index > 0 ){
-		value.innerHTML = '<div class="cell">' +
-		    '<div class="head">' + value.innerHTML+'</div>'+
-		    '<div class="uarr" index="'+index.toString()+'">' 
-		    + '&uarr;' + '</div> &nbsp; &nbsp;' +
-		    '<div class="darr" index="'+index.toString()+'">' 
-		    + '&darr;' + '</div>'
-		    + '<div class="footcell"> </div> </div>';
-	    }
-	}	
-    );
-
-    $('.uarr').click( function () {
-	sortTable([parseInt(this.getAttribute("index"))]);
+function addNavigation() {
+    var csvTag = $( '<a>' ).attr('href', csvlink)
+	.addClass('item').append( "[Download CSV]");
+    var fastaTag = $( '<a>' ).attr('href', fastalink).attr('target', '_blank')
+	.addClass('item').append("[Download FASTA]");
+    var msaTag = $( '<a>' ).attr('href', fastalink).attr('target', '_blank')
+	.addClass('item msa').append("[Download MSA]");
+    var msaFastaTag = $( '<a>' ).attr('href', fastalink).attr('target', '_blank')
+	.addClass('item msa').append("[View MSA]");
+    if (flagFasta == "False") {
+	fastaTag.addClass('disabledbutton');
     }
-		    );
-    $('.darr').click( function () {
-	sortTable([-parseInt(this.getAttribute("index"))]);
+    if (flagMSA == "False") {
+	msaTag.addClass('disabledbutton');
+	msaFastaTag.addClass('disabledbutton');
     }
-		    );
 
+    $( '.Navigate' ).append(csvTag).append(fastaTag).append(msaTag).append(msaFastaTag);
 
 }
+
 
 function addLinks() {
     var rows = document.getElementsByTagName('tr');
@@ -177,14 +183,18 @@ function addSelection() {
 	    if ($( this ).hasClass('selected')) {
 		$( this ).removeClass('selected');
 		$( this ).parent().removeClass('selected');
+		if ( selectedRows().length == 0 ) {
+		    $( '.Remove' ).addClass('disabledbutton');
+		}
 	    } else {
 		$( this ).addClass('selected');
-		$( this ).parent().addClass('selected');
+		$( this ).parent().addClass('selected');			
+		$( '.Remove' ).removeClass('disabledbutton');
 	    }
 	}
     );
     
-    $('.Selenzy tbody tr th').attr('title', 'Click to select');
+    $('.Selenzy tbody tr th').attr('title', 'Select row');
 
 }
 
@@ -193,11 +203,11 @@ function addSelection() {
 $(document)
     .ready(
 	function() {
-
-	    selectors = addFilter(3);
+	    addNavigation();
 
 	    formatTable();
 
+	    // selectors = addFilter(3);
 	    // $('.prior').selectmenu({
 	    // 	change: function(event) {
 	    // 	    var optionsFilter = [];

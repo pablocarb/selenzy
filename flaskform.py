@@ -33,7 +33,6 @@ def arguments():
     arg = parser.parse_args()
     return arg
 
-
 def allowed_file(filename):
     return filename 
 
@@ -260,7 +259,7 @@ def show_table():
     data.index = data.index + 1
     sessionid = 'debug'
     data.rename_axis('Select', axis="columns")
-    return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
+    return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False})
 
 
 @app.route('/uploader', methods=['GET', 'POST'])
@@ -273,7 +272,7 @@ def upload_file():
                 flash("No file selected")
                 return redirect (request.url)
             data, csvfile, sessionid = retrieve_session(fileinfo)
-            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
+            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False})
         else:
             try:
                 rxninfo = session['rxninfo']
@@ -291,7 +290,7 @@ def upload_file():
             noMSA = True
         
         data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
+        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
     elif request.method == 'GET':
         smarts = request.args.get('smarts')
         if smarts is None:
@@ -308,7 +307,7 @@ def upload_file():
         session['rxninfo'] = rxninfo
         session['rxntype'] = rxntype
         data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid)
+        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
     return render_template("my_form.html")
     
 @app.route('/results/<sessionid>/files/<filename>')
@@ -318,7 +317,7 @@ def results_file(sessionid,filename):
 if __name__== "__main__":  #only run server if file is called directly
 
     arg = arguments()
-    ALLOWED_EXTENSIONS = set(['rxn', ' '])
+    ALLOWED_EXTENSIONS = set(['rxn', 'smi', ' '])
 
     app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.upload_folder)
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
