@@ -66,29 +66,34 @@ def getReactionFromSmilesFile(smartsfile, rxnfile):
         handler.write(mdl)
     return storeReaction(smi, rxnfile), smi
 
-def getClosest(smi, fpfile, th=0.8):
+def getClosest(smi, fpfile, th=0.8, fp=None, fpn=None, marvin=False):
     dist = {}
-    data = np.load(fpfile)
-    fp = data['x'] 
-    fpNames = data['y']
-    data.close()
+    if fp is None:
+        print('Reading fingerprints')
+        data = np.load(fpfile)
+        fp = data['x'] 
+        fpn = data['y']
+        data.close()
+
     radius = 5
     targetMol = Chem.MolFromSmiles(smi)
     # If RDkit fails, we sanitize first using molconvert from ChemAxon, which is more robust
-    if targetMol is None:
-        cmd = ['molconvert', 'mol', smi]
-        cmd2 = ['molconvert', 'smiles']
-        job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        job2 = subprocess.Popen(cmd2, stdin=job.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        job.stdout.close()
-        out, err = job2.communicate()
-        targetMol = Chem.MolFromSmiles(out)
-
+    if targetMol is None and marvin:
+        try:
+            cmd = ['molconvert', 'mol', smi]
+            cmd2 = ['molconvert', 'smiles']
+            job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            job2 = subprocess.Popen(cmd2, stdin=job.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            job.stdout.close()
+            out, err = job2.communicate()
+            targetMol = Chem.MolFromSmiles(out)
+        except:
+            pass
     targetFp = GetMorganFingerprint(targetMol, radius)
     tn = DataStructs.BulkTanimotoSimilarity(targetFp, list(fp))
     for i in sorted(range(0, len(tn))):
-        dist[fpNames[i]] = tn[i]
-    return dist
+        dist[fpn[i]] = tn[i]
+    return dist, fp, fpn
 
 
 def getReactants(equation):
@@ -166,36 +171,9 @@ def getRSim(s1, p1, s2, p2, sim):
     S2 = math.sqrt(ss[pairs[1]]**2 + ss[pairs[2]]**2)/math.sqrt(2)
     return(S1, S2)
 
-def arguments():
-    parser = argparse.ArgumentParser(description='quickRSim Pablo Carbonell, SYNBIOCHEM, 2016')
-    parser.add_argument('db', help='Metanetx reaction file')
-    parser.add_argument('fp', help='Babel fingerprint file for reactants')
-    parser.add_argument('-rxn', 
-                        help='Input reaction rxn file')
-    parser.add_argument('-rid', 
-                        help='Input reaction id')
-    parser.add_argument('-smarts', 
-                        help='Input reaction SMARTS')
-    parser.add_argument('-smartsfile', 
-                        help='Input reaction SMARTS file')
-    parser.add_argument('-chem', 
-                        help='Metanetx chemical structures (if input is reaction id)')
-    parser.add_argument('-th', type=float, default=0.8, 
-                        help='Similarity threshold [default=0.8]')
-    parser.add_argument('-out', 
-                        help='Output results in .txt file, please specify file name')
-    parser.add_argument('-high', 
-                        help='Output results in .txt file with highest similarity score from both forwards and backwards reactions, please specify file name')
-    arg = parser.parse_args()
-    return arg
-
-
-
-if __name__ == '__main__':
-    arg = arguments()
+def run(arg, pc):
     if arg.out:
-        fileObj = open(arg.out, 'w')
-    
+        fileObj = open(arg.out, 'w')    
     if arg.high:
         fileObj = open(arg.high, 'w')
     rsp = reacSubsProds(arg.db)
@@ -219,17 +197,23 @@ if __name__ == '__main__':
         raise Exception('No target')
     sim = {} 
     # Compute similarities for new reactants
+    if pc is not None:
+        fp = pc.fp
+        fpn = pc.fpn
+    else:
+        fp = None
+        fpn = None
     for r in rTarget:
         for s in rTarget[r][0]:
             if s not in sim:
                 try:
-                    sim[s] = getClosest(s, arg.fp, arg.th)
+                    sim[s], fp, fpn = getClosest(s, arg.fp, arg.th, fp=fp, fpn=fpn, marvin=arg.marvin)
                 except:
                     continue
         for p in rTarget[r][1]:
             if p not in sim:
                 try:
-                    sim[p] = getClosest(p, arg.fp, arg.th)
+                    sim[p], fp, fpn = getClosest(p, arg.fp, arg.th, fp=fp, fpn=fpn, marvin=arg.marvin)
                 except:
                     continue
     # Get reaction similarities
@@ -240,7 +224,7 @@ if __name__ == '__main__':
             debug = False
             S1, S2 = getRSim(s1, p1, s2, p2, sim)
             if S1 > 0 and S2 > 0:
-                print(r1, r2, S1, S2, smiles, ec2)
+#                print(r1, r2, S1, S2, smiles, ec2)
                 
                 if arg.out:
                     print(r1, r2, S1, S2, smiles, ec2, file = fileObj)
@@ -251,5 +235,40 @@ if __name__ == '__main__':
                     else:
                         print(r1, r2, S2, smiles, ec2, file = fileObj)
                         
+
+def arguments(args=None):
+    parser = argparse.ArgumentParser(description='quickRSim Pablo Carbonell, SYNBIOCHEM, 2016')
+    parser.add_argument('db', help='Metanetx reaction file')
+    parser.add_argument('fp', help='Babel fingerprint file for reactants')
+    parser.add_argument('-rxn', 
+                        help='Input reaction rxn file')
+    parser.add_argument('-rid', 
+                        help='Input reaction id')
+    parser.add_argument('-smarts', 
+                        help='Input reaction SMARTS')
+    parser.add_argument('-smartsfile', 
+                        help='Input reaction SMARTS file')
+    parser.add_argument('-chem', 
+                        help='Metanetx chemical structures (if input is reaction id)')
+    parser.add_argument('-th', type=float, default=0.8, 
+                        help='Similarity threshold [default=0.8]')
+    parser.add_argument('-out', 
+                        help='Output results in .txt file, please specify file name')
+    parser.add_argument('-high', 
+                        help='Output results in .txt file with highest similarity score from both forwards and backwards reactions, please specify file name')
+    parser.add_argument('-marvin', 
+                        help='Call marvin if needed (skip if fails)')
+
+    if args is not None:
+        arg = parser.parse_args(args=args)
+    else:
+        arg = parser.parse_args()
+    return arg
+
+
+
+if __name__ == '__main__':
+    arg = arguments()
+    run(arg)
 
                         

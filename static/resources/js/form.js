@@ -54,18 +54,19 @@ $(document)
 			    $('#upload').prop('disabled', false);
 			}
 			if (data['success'] == true) {
-			    $('.canvas').html(data['data']);
-			    svg = $('svg')[0];
-			    var bbox = svg.getBBox();
-			    var viewBox = [bbox.x, bbox.y, bbox.width, bbox.height].join(" ");
-			    svg.setAttribute("viewBox", viewBox);
-			    svg.removeAttribute('height');
+			    $('.canvas img').attr('src', data['data']);
+//			    $('.canvas').html(data['data']);
+//			    svg = $('svg')[0];
+//			    var bbox = svg.getBBox();
+//			    var viewBox = [bbox.x, bbox.y, bbox.width, bbox.height].join(" ");
+//			    svg.setAttribute("viewBox", viewBox);
+//			    svg.removeAttribute('height');
 			    $('.canvas').dialog({width: 600, title: 'Reaction query'});
 			    toggleVisibility( $('.Info1') );
 			}
 		    },
 		    error : function() {
-			$.alert('Unknown reaction format');
+			alert('Unknown reaction format');
 			console.log('Sorry, no luck');
 		    }
 		});

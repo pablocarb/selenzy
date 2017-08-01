@@ -10,18 +10,63 @@ import os, subprocess
 import json
 import csv
 import argparse
+import quickRsim
+import numpy as np
+from rdkit.Chem import AllChem, Draw
 
+class preLoad(object):
+    """ Container of precomputed data """
+    def __init__(self):
+        pass
 
-def sanitize_reaction(rxninfo):
+    def fasta(self, datadir, ffile="seqs.fasta"):
+        (sequence, names, descriptions, osource) = readFasta(datadir, ffile)
+        self.sequence = sequence
+        self.names = names
+        self.descriptions = descriptions
+        self.osource = osource
+
+    def fp(self, datadir, fpfile):
+        data = np.load(os.path.join(datadir, fpfile))
+        self.fp = data['x']
+        self.fpn = data['y']
+        data.close()
+
+def sanitizeRxn(rxninfo, outrxn):
     """ It works both with the smiles string or a rxn file """
+    if os.path.exists(rxninfo):
+        if open(rxninfo).readline().startswith('$RXN'):
+            rxn = AllChem.ReactionFromRxnFile(rxninfo)
+        else:
+            smarts =  open(rxninfo).readline()
+            rxn = AllChem.ReactionFromSmarts(smarts)
+    mdl = AllChem.ReactionToRxnBlock(rxn)
+    with open(outrxn, 'w') as handler:
+        handler.write(mdl)
 
-
-def display_reaction(rxninfo):
+def display_reaction(rxninfo, outfolder, outname, marvin=False):
     """ It works both with the smiles string or a rxn file """
-    cmd = ['molconvert', 'svg:w500', rxninfo]
-    job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = job.communicate()
-    return out
+    if marvin:
+        cmd = ['molconvert', 'svg:w500', rxninfo]
+        job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = job.communicate()
+        outimage = os.path.join(outfolder, outname+'.svg')
+        return outimage
+    else:
+        if os.path.exists(rxninfo):
+            if open(rxninfo).readline().startswith('$RXN'):
+                rxn = AllChem.ReactionFromRxnFile(rxninfo)
+            else:
+                smarts =  open(rxninfo).readline()
+                rxn = AllChem.ReactionFromSmarts(smarts)
+            outimage = os.path.join(outfolder, outname+'.png')
+            im = Draw.ReactionToImage(rxn).save(outimage)
+            return outimage
+        else:
+            rxn = AllChem.ReactionFromSmarts(rxninfo)
+            outimage = os.path.join(outfolder, outname+'.png')
+            im = Draw.ReactionToImage(rxn).save(outimage)
+            return outimage
 
 def seqOrganism(datadir, fileSeqOrg):
     seqorg = {}
@@ -120,13 +165,14 @@ def readRxnCons(consensus):
         
     return (MnxDir)   
     
-def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
-
-
-    cmd = [p2env, 'quickRsim.py', 
-           os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'fp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
-    job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = job.communicate()
+def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0, pc=None):
+    """ Commmand line arguments of quickRsim """
+    args = [os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'mgfp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
+    quickRsim.run( quickRsim.arguments(args), pc )
+#    cmd = [p2env, 'quickRsim.py', 
+#           os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'fp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
+#    job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#    out, err = job.communicate()
 #    print(out)
 #    global mnx
 #    mnx = []
@@ -136,8 +182,8 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
     EcNumber = {}
     
     if drxn==1:
-        file = open(os.path.join(outdir, "results_quickRsim.txt"), 'r')
-        for line in file:
+        fileout = open(os.path.join(outdir, "results_quickRsim.txt"), 'r')
+        for line in fileout:
             splitdata = line.split()
             S1 = splitdata[2]
             S2 = splitdata[3]
@@ -168,14 +214,14 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
                     MnxSim[Mnx]=S1
                 else:
                     MnxSim[Mnx]=S2
-        file.close()
+        fileout.close()
             
         return (MnxSim, MnxDirPref, MnxDirUsed, SMILES, EcNumber)
         
     else:
 
-        file = open(os.path.join(outdir, "results_quickRsim.txt"), 'r')
-        for line in file:
+        fileout = open(os.path.join(outdir, "results_quickRsim.txt"), 'r')
+        for line in fileout:
             splitdata = line.split()
             S1 = splitdata[2]
             S2 = splitdata[3]
@@ -194,7 +240,7 @@ def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0):
             elif S2 == S1:
                 MnxDirUsed[Mnx]='0'
                 MnxSim[Mnx]=S2                
-        file.close()              
+        fileout.close()              
         
         return (MnxSim, MnxDirPref, MnxDirUsed, SMILES, EcNumber)
 
@@ -354,7 +400,7 @@ def sort_rows(rows, columns):
     return rows
 
     
-def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False):
+def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None):
     
 
     datadir = os.path.join(datadir)
@@ -370,11 +416,17 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='8
     
 
     print ("Running quickRsim...")    
-    (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir)
+    (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir, pc)
 
 
     print ("Acquiring databases...")
-    (sequence, names, descriptions, osource) = readFasta(datadir, "seqs.fasta")
+    if pc is not None:
+        sequence = pc.sequence
+        names = pc.names
+        descriptions = pc.descriptions
+        osource = pc.osource
+    else:
+        (sequence, names, descriptions, osource) = readFasta(datadir, "seqs.fasta")
 
     seqorg = seqOrganism(datadir, "seq_org.tsv")
     tax = readTaxonomy(datadir, "org_lineage.csv")
