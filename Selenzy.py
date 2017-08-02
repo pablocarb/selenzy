@@ -34,39 +34,78 @@ class preLoad(object):
 
 def sanitizeRxn(rxninfo, outrxn):
     """ It works both with the smiles string or a rxn file """
-    if os.path.exists(rxninfo):
-        if open(rxninfo).readline().startswith('$RXN'):
-            rxn = AllChem.ReactionFromRxnFile(rxninfo)
-        else:
-            smarts =  open(rxninfo).readline()
-            rxn = AllChem.ReactionFromSmarts(smarts)
-    mdl = AllChem.ReactionToRxnBlock(rxn)
-    with open(outrxn, 'w') as handler:
-        handler.write(mdl)
-
-def display_reaction(rxninfo, outfolder, outname, marvin=False):
-    """ It works both with the smiles string or a rxn file """
-    if marvin:
-        cmd = ['molconvert', 'svg:w500', rxninfo]
-        job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = job.communicate()
-        outimage = os.path.join(outfolder, outname+'.svg')
-        return outimage
-    else:
+    try:
         if os.path.exists(rxninfo):
             if open(rxninfo).readline().startswith('$RXN'):
                 rxn = AllChem.ReactionFromRxnFile(rxninfo)
             else:
-                smarts =  open(rxninfo).readline()
-                rxn = AllChem.ReactionFromSmarts(smarts)
-            outimage = os.path.join(outfolder, outname+'.png')
-            im = Draw.ReactionToImage(rxn).save(outimage)
-            return outimage
-        else:
-            rxn = AllChem.ReactionFromSmarts(rxninfo)
-            outimage = os.path.join(outfolder, outname+'.png')
-            im = Draw.ReactionToImage(rxn).save(outimage)
-            return outimage
+                smarts =  open(rxninfo).readline().rstrip()
+                try:
+                    rxn = AllChem.ReactionFromSmarts(smarts, useSmiles=True)
+                except:
+                    rxn = AllChem.ReactionFromSmarts(smarts)
+        smi = AllChem.ReactionToSmiles(rxn)
+        with open(outrxn+'.smi', 'w') as handler:
+            handler.write(smi)
+        mdl = AllChem.ReactionToRxnBlock(rxn)
+        with open(outrxn+'.rxn', 'w') as handler:
+            handler.write(mdl)
+        return smi
+    except:
+        return ''
+
+def sanitizeSmarts(smarts, outrxn):
+    """ It works both with the smiles string or a rxn file """
+    try:
+        try:
+            rxn = AllChem.ReactionFromSmarts(smarts, useSmiles=True)
+        except:
+            rxn = AllChem.ReactionFromSmarts(smarts)
+        smi = AllChem.ReactionToSmiles(rxn)
+        with open(outrxn+'.smi', 'w') as handler:
+            handler.write(smi)
+        mdl = AllChem.ReactionToRxnBlock(rxn)
+        with open(outrxn+'.rxn', 'w') as handler:
+            handler.write(mdl)
+        return smi
+    except:
+        return ''
+
+
+
+def display_reaction(rxninfo, outfolder, outname, marvin=False):
+    """ It works both with the smiles string or a rxn file """
+    if marvin:
+        try:
+            cmd = ['molconvert', 'svg:w500', rxninfo]
+            job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = job.communicate()
+            outimage = os.path.join(outfolder, outname+'.svg')
+            return outimage, (600, 400)
+        except:
+            return '', (0,0)
+    else:
+        try:
+            if os.path.exists(rxninfo):
+                if open(rxninfo).readline().startswith('$RXN'):
+                    rxn = AllChem.ReactionFromRxnFile(rxninfo)
+                else:
+                    smarts =  open(rxninfo).readline()
+                    rxn = AllChem.ReactionFromSmarts(smarts)
+                outimage = os.path.join(outfolder, outname+'.png')
+                im = Draw.ReactionToImage(rxn)
+                size = im.size
+                im.save(outimage)
+                return outimage, size
+            else:
+                rxn = AllChem.ReactionFromSmarts(rxninfo)
+                outimage = os.path.join(outfolder, outname+'.png')
+                im = Draw.ReactionToImage(rxn)
+                size = im.size
+                im.save(outimage)
+                return outimage, size
+        except:
+            return '', (0,0)
 
 def seqOrganism(datadir, fileSeqOrg):
     seqorg = {}
@@ -415,8 +454,11 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='8
         csvfilename = "results_selenzy.csv"
     
 
-    print ("Running quickRsim...")    
-    (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir, pc)
+    print ("Running quickRsim...")
+    try:
+        (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir, pc)
+    except:
+        return False
 
 
     print ("Acquiring databases...")
@@ -555,6 +597,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='8
     write_csv(os.path.join(outdir, csvfilename), head, sortrows)
 
     print ("CSV file created.")
+    return True
     
     
 def arguments():

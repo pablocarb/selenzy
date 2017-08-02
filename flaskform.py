@@ -21,7 +21,7 @@ import csv
 app = Flask(__name__)
 api = Api(app)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
-app.config['PRELOAD'] = True
+app.config['PRELOAD'] = False
 app.config['MARVIN'] = False
 
 def arguments():
@@ -51,10 +51,10 @@ def save_rxn(rxninfo):
         init_session()
         uniquename = file_path(session['uniqueid'], filename)
     rxninfo.save(uniquename)
-    outname = file_path(session['uniqueid'], session['uniqueid']+'.rxn')
-    Selenzy.sanitizeRxn(uniquename, outname)
-    session['rxninfo'] = outname
-    return outname
+    outname = file_path(session['uniqueid'], session['uniqueid'])
+    rxninfo = Selenzy.sanitizeRxn(uniquename, outname)
+    session['rxninfo'] = rxninfo
+    return rxninfo
 
 def init_session():
     reset_session()
@@ -75,7 +75,7 @@ def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
     uniqueid = session['uniqueid']
     uniquefolder = session['uniquefolder']
     csvfile = "selenzy_results.csv"
-    Selenzy.analyse(['-'+rxntype, rxninfo], 
+    success = Selenzy.analyse(['-'+rxntype, rxninfo], 
                     app.config['PYTHON2'],
                     targets,
                     app.config['DATA_FOLDER'],  
@@ -86,10 +86,11 @@ def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
                     NoMSA = noMSA,
                     pc = app.config['TABLES']
     ) # this creates CSV file in Uploads directory
-    data = pd.read_csv(file_path(uniqueid, csvfile))
-    data.index = data.index + 1
-    data.rename_axis('Select', axis="columns")
-    return data, csvfile, uniqueid
+    if success:
+        data = pd.read_csv(file_path(uniqueid, csvfile))
+        data.index = data.index + 1
+        data.rename_axis('Select', axis="columns")
+        return data, csvfile, uniqueid
 
     
 def retrieve_session(csvinfo):
@@ -138,16 +139,21 @@ class RestQuery(Resource):
             else:
                 host = '83333'
             init_session()
-            data, csvfile, session = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-            return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': data.to_json()})
+            try:
+                data, csvfile, session = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
+                return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': data.to_json()})
+            except:
+                return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': None})
 
 
 api.add_resource(RestGate, '/REST')
 
 api.add_resource(RestQuery, '/REST/Query')
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return redirect(url_for('upload_form'))
 
-# @ signifies a decorator - wraps a function and modifies its behaviour
 @app.route('/')
 def upload_form():
     if 'username' not in session:
@@ -176,47 +182,74 @@ def login():
 def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
-        
+
+@app.route('/msa', methods=['POST'])
+def post_msa():
+    """ Post safely the MSA """
+    if request.method == 'POST':
+        sessionid = json.loads(request.values['sessionid'])
+        msafile = os.path.join(app.config['UPLOAD_FOLDER'], sessionid, 'sequences_aln.fasta')
+        if os.path.exists(msafile):
+            msa = open(msafile).readlines()
+            return json.dumps({'msa': ''.join(msa)})
+
+@app.route('/msaview', methods=['GET'])
+def display_msa():
+    """ Display the MSA """
+    if request.method == 'GET':
+        if 'id' in request.values:
+            sessionid = request.values['id']
+            return render_template('viewmsa.html', sessionid=sessionid)
 
 @app.route('/display', methods=['POST'])
 def display_reaction(marvin=app.config['MARVIN']):
     """ Display the reaction """
     if request.method == 'POST':
+        size = (600,400)
         if 'file' in request.files and len(request.files['file'].filename) > 0:
-            rxntype = 'rxn'
             fileinfo = request.files['file']   
             if fileinfo.filename == '' or not allowed_file(fileinfo.filename):
                 flash("No file selected")
                 return redirect (request.url)
             rxninfo = save_rxn(fileinfo)
-            if marvin:
-                svgstream = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = session['uniqueid'], marvin=True)
-                data = svgstream.decode('utf-8')
+            success = True
+            if len(rxninfo) == 0:
+                success = False
+                data = ''
             else:
-                outfile = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = session['uniqueid'], marvin=False)
-                data = os.path.join('/results', session['uniqueid'], 'files', os.path.basename(outfile))
-            success = False
-            if len(data) > 0:
-                session['rxninfo'] = rxninfo
-                session['rxntype'] = 'rxn'
-                session['status'] = True
-                success = True
-                return json.dumps( {'data': data, 'status': session['status'], 'success': success} )
-        elif len(request.form['smarts']) > 0:
-            rxninfo = request.form['smarts']
-            if marvin:
-                svgstream = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = session['uniqueid'], marvin=True)
-                data = svgstream.decode('utf-8')
-            else:
-                outfile = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = session['uniqueid'], marvin=False)
-                data = os.path.join('/results', session['uniqueid'], 'files', os.path.basename(outfile))
-            success = False
-            if len(data) > 0:
+                if marvin:
+                    svgstream = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=True)
+                    data = svgstream.decode('utf-8')
+                    if len(data) == 0:
+                        success = False
+                else:
+                    outfile, size = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=False)
+                    if len(outfile) == 0:
+                        success = False
+                    data = os.path.join('/results', session['uniqueid'], 'files', os.path.basename(outfile))
                 session['rxninfo'] = rxninfo
                 session['rxntype'] = 'smarts'
                 session['status'] = True
                 success = True
-                return json.dumps( {'data': data, 'status': session['status'], 'success': success} )
+            return json.dumps( {'data': data, 'status': session['status'], 'success': success, 'svg': marvin, 'size': size} )
+        elif len(request.form['smarts']) > 0:
+            outname = file_path(session['uniqueid'], session['uniqueid'])
+            rxninfo = Selenzy.sanitizeSmarts(request.form['smarts'], outname)
+            success = True
+            if marvin:
+                svgstream = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=True)
+                data = svgstream.decode('utf-8')
+                if len(data) == 0:
+                    success = False
+            else:
+                outfile, size = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=False)
+                if len(outfile) == 0:
+                    success = False
+                data = os.path.join('/results', session['uniqueid'], 'files', os.path.basename(outfile))
+            session['rxninfo'] = rxninfo
+            session['rxntype'] = 'smarts'
+            session['status'] = True
+            return json.dumps( {'data': data, 'status': session['status'], 'success': success, 'svg': marvin, 'size': size} )
 
 
 @app.route('/sorter', methods=['POST'])
@@ -269,20 +302,22 @@ def delete_rows():
 
 @app.route('/debug', methods=['GET'])
 def show_table():
-    csvfile = os.path.join('uploads', 'debug', 'selenzy_results.csv')
-    data = pd.read_csv(csvfile)
-    data.index = data.index + 1
-    sessionid = 'debug'
-    data.rename_axis('Select', axis="columns")
-    return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False})
+    if app.debug == True:
+        csvfile = os.path.join('uploads', 'debug', 'selenzy_results.csv')
+        data = pd.read_csv(csvfile)
+        data.index = data.index + 1
+        sessionid = 'debug'
+        data.rename_axis('Select', axis="columns")
+        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False})
+    else:
+        return redirect ( url_for('upload_form') )
 
-
-@app.route('/uploader', methods=['GET', 'POST'])
+@app.route('/results', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
         """ The POST request should come from an already initalised session """
         if 'uniqueid' not in session:
-            return render_template("my_form.html")
+            return redirect ( url_for('upload_form') )
         # check if post request has smarts part
         if 'csv' in request.files  and len(request.files['csv'].filename) > 0:
             fileinfo = request.files['csv']   
@@ -306,15 +341,17 @@ def upload_file():
             direction = 1
         if request.form.get('noMSA'):
             noMSA = True
-        
-        data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
+        try:
+            data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
+            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
+        except:
+            return redirect( url_for("upload_form") )
     elif request.method == 'GET':
         """ A GET request would require an independently initialised session """
         init_session()
         smarts = request.args.get('smarts')
         if smarts is None:
-            return redirect(request.url)
+            return redirect( url_for("upload_form") )
         host = request.args.get('host')
         if smarts is None:
             host = '83333'
@@ -325,9 +362,12 @@ def upload_file():
         targets = 20
         session['rxninfo'] = rxninfo
         session['rxntype'] = rxntype
-        data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
-    return render_template("my_form.html")
+        try:
+            data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
+            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
+        except:
+            return redirect( url_for("upload_form") )
+    return redirect( url_for("upload_form") )
     
 @app.route('/results/<sessionid>/files/<filename>')
 def results_file(sessionid,filename):

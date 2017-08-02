@@ -24,6 +24,8 @@ h2              { font-size: 1.2em; }
 }
 .options {
 }
+.info {
+}
 .rquery {
     float: left;
 }
@@ -39,8 +41,16 @@ h2              { font-size: 1.2em; }
     float: left;
     visibility: hidden;
     align: middle;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 .Message {
     text-align:center; 
     font-size: x-small;
+}
+.validate {
+    margin-top: 10px;
+}
+.status {
+    color: red;
 }

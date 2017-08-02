@@ -1,3 +1,24 @@
+function customConfirm( message, title ) {
+    if (!title ) 
+	title = 'Alert';
+    if ( !message ) 
+	message = 'System error';
+    $( '<div></div>' ).html( message ).dialog( {
+	title: title,
+	resizable: false,
+	modal: true,
+	buttons: {
+	    'Confirm': function() {
+		deleteRows();
+		$( this ).dialog( 'close' )
+	    },
+	    'Cancel': function() {
+		$( this ).dialog( 'close' )
+	    }
+	   }
+	});
+}
+
 
 function formatTable(csvdata) {
     $('.dataframe').addClass('Selenzy');
@@ -11,9 +32,7 @@ function formatTable(csvdata) {
     $( '.Remove' ).addClass('disabledbutton');
     $( '.Remove').click( function(event) {
 	if (selectedRows().length > 0) {
-	    if ( confirm('Do you want to remove permanently selected rows?') ) {
-		deleteRows();
-	    }
+	    customConfirm('Do you want to remove permanently selected rows?');
 	  }
     });
 }
@@ -130,9 +149,11 @@ function addNavigation() {
 	.addClass('item').append( "[Download CSV]");
     var fastaTag = $( '<a>' ).attr('href', fastalink).attr('target', '_blank')
 	.addClass('item').append("[Download FASTA]");
-    var msaTag = $( '<a>' ).attr('href', fastalink).attr('target', '_blank')
+    var msaTag = $( '<a>' ).attr('href', msafastalink).attr('target', '_blank')
 	.addClass('item msa').append("[Download MSA]");
-    var msaFastaTag = $( '<a>' ).attr('href', fastalink).attr('target', '_blank')
+    var msaFastaTag = $( '<a>' ).attr('href', msalink).attr('target', '_blank')
+	.addClass('item msa').append("[Show MSA]");
+    var msaViewTag = $( '<a>' ).attr('href', msaviewlink).attr('target', '_blank')
 	.addClass('item msa').append("[View MSA]");
     if (flagFasta == "False") {
 	fastaTag.addClass('disabledbutton');
@@ -142,7 +163,7 @@ function addNavigation() {
 	msaFastaTag.addClass('disabledbutton');
     }
 
-    $( '.Navigate' ).append(csvTag).append(fastaTag).append(msaTag).append(msaFastaTag);
+    $( '.Navigate' ).append(csvTag).append(fastaTag).append(msaTag).append(msaFastaTag).append(msaViewTag);
 
 }
 

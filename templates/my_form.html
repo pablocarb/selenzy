@@ -16,7 +16,12 @@
     SYNBIOCHEM <b>Selenzy</b> <br/>
     Enzyme Selection Tool <p />
     </center>
+    <div class="welcome">
     Welcome, {{username}}!
+    </div>
+    <div class="validate">
+      Status: <span class="status">No reaction.</span>
+      </div>
   </div>
 
 
@@ -27,13 +32,13 @@
 	<div class="reaction">
 	<form action="uploader" method="POST" enctype = "multipart/form-data" id="front">
 	  <div class="rquery">
-	    Reaction [rxn, smi]: <input type="file" name="file" id="rxn" />
+	    Upload reaction [RXN, SMILES]: <input type="file" name="file" id="rxn" />
 	  <br/>
-		Reaction [SMARTS]: <input type="text" name="smarts" id="smarts"/><br/>
+	    Input reaction [SMILES, SMARTS]: <input type="text" name="smarts" id="smarts"/><br/>
 	  </div>
 	  <div class="Info1"> 
-	    <img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/><br/>
-	    <span class="Message">Uploading...</span>
+	    <center><img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/> </center>
+	    <center><span class="Message">Uploading...</span></center>
 	  </div>
 	  <div style="clear:both" />
 	</form>
@@ -43,20 +48,20 @@
 	<legend>Options</legend>
 	<div class="options ui-corner-all">
 	  <div class="opt">
-	  <form action="uploader" method="POST" id="options">
+	  <form action="results" method="POST" id="options">
 <!--		Retrieve table [csv]: <input type="file" name="csv"/><br/> -->
-		 Targets (default: 50): <input type="number" name="targets" value="50"/> <br/>
+		 Number of hits: <input type="number" name="targets" value="50"/> <br/>
 		<input type="checkbox" name="direction"/> Use only consensus reaction direction.<br/>
 		<input type="checkbox" name="noMSA" checked/> No MSA (faster). <br/>
-		Host: <select name="host">
+		Host organism: <select name="host">
 		  <option value="83333">Escherichia coli K-12</option>
 		  <option value="4932">Saccharomyces cerevisiae</option>
 		  </select>
-		<input type="submit" value="Upload" id="upload" disabled="disabled" />
+		<input type="submit" value="Submit" id="upload" disabled="disabled" />
 	  </div>
 	  <div class="Info2"> 
-	    <img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/><br/>
-	    <span class="Message">Selecting enzymes...<br/></span>
+	    <center><img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/></center>
+	    <center<<span class="Message">Selecting enzymes...</span></center>
 	  </div>
 	  <div style="clear:both" />
 
@@ -64,8 +69,23 @@
 	</form>
 	</div>
          </fieldset>
+	<fieldset>
+	  <legend>Help</legend>
+	  <div class="info">
+	    	  Welcome to Selenzy, a reaction-centered enzyme selection tool.</br>
+		  Options:
+		  <ul>
+		    <li> <b>Target reaction:</b> Reaction to be used as template for screening. <br/>Allowed formats: MDL RXN, SMILES, SMARTS.</li>
+		    <li> <b>Hits:</b> Number of hits to show.</li>
+		    <li> <b>MSA:</b> Perform multiple sequence alignment and compute conservation score.</li>
+		    <li> <b>Host organism:</b> Compute phylogenetic distance of source organisms to host.</li>
+		    </ul>
+		  Contact: <a href="mailto:pablo.carbonell@manchester.ac.uk">Pablo Carbonell</a>
+	    <div>
+	  </fieldset>
 	<div class="canvas"><img /></div>
-	<div class="foot"></div>
+	<div class="foot">
+	</div>
 	</div>
 </body>
 </html>
