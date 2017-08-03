@@ -32,6 +32,25 @@ class preLoad(object):
         self.fpn = data['y']
         data.close()
 
+    def seqData(self, datadir, fl):
+        with open(os.path.join(datadir, fl[0])) as f:
+            self.MnxToUprot = json.load(f)
+        
+        with open(os.path.join(datadir, fl[1])) as f2:
+            self.upclst = json.load(f2)
+        
+        with open(os.path.join(datadir, fl[2])) as f3:
+            self.clstrep= json.load(f3)
+        self.seqorg = seqOrganism(datadir, fl[3])
+        self.tax = readTaxonomy(datadir, fl[4])
+
+    def reacData(self, datadir, smf):
+            smiFile = os.path.join(datadir, smf)
+            self.smir = {}
+            if os.path.exists(smiFile):
+                self.smir = reactionSmiles(smiFile)
+
+
 def sanitizeRxn(rxninfo, outrxn):
     """ It works both with the smiles string or a rxn file """
     try:
@@ -174,21 +193,6 @@ def readFasta(datadir, fileFasta):
     
     
     return (sequence, names, descriptions, osource)
-
-def readReacFile(reacfile):
-    fileObj2 = open(reacfile, 'r')
-    MnxToUprot = dict()
-    for line in fileObj2:
-        splitdata = line.split()
-        Mnx = splitdata[0]
-        Uprot = splitdata[2]
-        MnxToUprot.setdefault(Mnx, []).append(Uprot)
-    fileObj2.close()
-    
-    with open('MnxToUprot.json', 'w') as f:
-        json.dump(MnxToUprot, f)
-    
-    return (MnxToUprot)
  
 def readRxnCons(consensus):
     
@@ -460,38 +464,34 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
         names = pc.names
         descriptions = pc.descriptions
         osource = pc.osource
+        seqorg = pc.seqorg
+        tax = pc.tax
+        MnxToUprot = pc.MnxToUprot
+        upclst = pc.upclst
+        clstrep = pc.clstrep
+        smir = pc.smir
     else:
         (sequence, names, descriptions, osource) = readFasta(datadir, "seqs.fasta")
+        seqorg = seqOrganism(datadir, "seq_org.tsv")
+        tax = readTaxonomy(datadir, "org_lineage.csv")
+        with open(os.path.join(datadir, 'MnxToUprot.json')) as f:
+            MnxToUprot = json.load(f)
+        with open (os.path.join(datadir, 'upclst.json')) as f2:
+            upclst = json.load(f2)
+        with open (os.path.join(datadir, 'clstrep.json')) as f3:
+            clstrep= json.load(f3)
+        smiFile = os.path.join(datadir, 'reac_smi.csv')
+        smir = {}
+        if os.path.exists(smiFile):
+            smir = reactionSmiles(smiFile)
 
-    seqorg = seqOrganism(datadir, "seq_org.tsv")
-    tax = readTaxonomy(datadir, "org_lineage.csv")
-    
-    with open('MnxToUprot.json') as f:
-        MnxToUprot = json.load(f)
-        
-    with open ('upclst.json') as f2:
-        upclst = json.load(f2)
-        
-    with open ('clstrep.json') as f3:
-        clstrep= json.load(f3)
 
-    smiFile = os.path.join(datadir, 'reac_smi.csv')
-    smir = {}
-    if os.path.exists(smiFile):
-        smir = reactionSmiles(smiFile)
-
-#    (clstup, upclst, clstrep) = clustar.readfile("cdhit_final.clstr")   # PUT THESE OUTSIDE, DO NOT REREAD EACH RUN
-#    
-
-#    MnxToUprot = readReacFile("reac_seqs.tsv")
     targplus = int(targ)*3
     list_mnx = sorted(MnxSim, key=MnxSim.__getitem__, reverse=True)[:int(targplus)]  #allow user to manipulate window of initial rxn id list
-#    print (list_mnx)
     fastaFile = os.path.join(outdir, "sequences.fasta")
     f = open(fastaFile, "w")
     print ("Creating initial MNX list...")
     targets = set()
-#    global UprotToMnx
     UprotToMnx = {}
     
     # first creating fasta file, f, for further data extraction
@@ -576,6 +576,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
                 else:
                     tdist[org] = '-'
             rows.append( (y, desc, org, tdist[org], mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
+
        
         except KeyError:
             pass

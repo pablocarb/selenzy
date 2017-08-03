@@ -21,7 +21,6 @@ import csv
 app = Flask(__name__)
 api = Api(app)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
-app.config['PRELOAD'] = False
 app.config['MARVIN'] = False
 
 def arguments():
@@ -29,7 +28,9 @@ def arguments():
     parser.add_argument('upload_folder', 
                         help='Upload folder')
     parser.add_argument('datadir',
-                        help='specify data directory for required databases files, please end with slash')
+                        help='Data directory for required databases files')
+    parser.add_argument('-d', action='store_true',
+                        help='Run in debug mode (no preload)')
     arg = parser.parse_args()
     return arg
 
@@ -74,7 +75,6 @@ def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
     uniquefolder = session['uniquefolder']
     csvfile = "selenzy_results.csv"
     success = Selenzy.analyse(['-'+rxntype, rxninfo], 
-                    app.config['PYTHON2'],
                     targets,
                     app.config['DATA_FOLDER'],  
                     uniquefolder,
@@ -380,13 +380,21 @@ if __name__== "__main__":  #only run server if file is called directly
     app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.upload_folder)
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
 
+    if arg.d:
+        app.config['DEBUG'] = True
+        app.config['PRELOAD'] = False
+    else:
+        app.config['DEBUG'] = False
+        app.config['PRELOAD'] = True        
+
     if app.config['PRELOAD']:
         app.config['TABLES'] = Selenzy.preLoad()
-        
-        app.config['TABLES'].fasta('data', 'seqs.fasta')
-        app.config['TABLES'].fp('data', 'mgfp.npz')
+        app.config['TABLES'].fasta(arg.datadir, 'seqs.fasta')
+        app.config['TABLES'].fp(arg.datadir, 'mgfp.npz')
+        app.config['TABLES'].seqData(arg.datadir, ['MnxToUprot.json', 'upclst.json', 'clstrep.json', "seq_org.tsv", "org_lineage.csv"])
+        app.config['TABLES'].reacData(arg.datadir, 'reac_smi.csv')
     else:
         app.config['TABLES'] = None
 
-    app.run(host="0.0.0.0",port=5000, debug=True, threaded=True)
+    app.run(host="0.0.0.0",port=5000, debug=app.config['DEBUG'], threaded=True)
 #    app.run(port=5000, debug=True)

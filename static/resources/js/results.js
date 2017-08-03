@@ -151,8 +151,6 @@ function addNavigation() {
 	.addClass('item').append("[Download FASTA]");
     var msaTag = $( '<a>' ).attr('href', msafastalink).attr('target', '_blank')
 	.addClass('item msa').append("[Download MSA]");
-    var msaFastaTag = $( '<a>' ).attr('href', msalink).attr('target', '_blank')
-	.addClass('item msa').append("[Show MSA]");
     var msaViewTag = $( '<a>' ).attr('href', msaviewlink).attr('target', '_blank')
 	.addClass('item msa').append("[View MSA]");
     if (flagFasta == "False") {
@@ -160,10 +158,10 @@ function addNavigation() {
     }
     if (flagMSA == "False") {
 	msaTag.addClass('disabledbutton');
-	msaFastaTag.addClass('disabledbutton');
+	msaViewTag.addClass('disabledbutton');
     }
 
-    $( '.Navigate' ).append(csvTag).append(fastaTag).append(msaTag).append(msaFastaTag).append(msaViewTag);
+    $( '.Navigate' ).append(csvTag).append(fastaTag).append(msaTag).append(msaViewTag);
 
 }
 
