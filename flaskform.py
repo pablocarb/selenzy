@@ -169,6 +169,9 @@ def login():
         session['username'] = request.form['username']
         init_session()
         return redirect(url_for('upload_form'))
+    else:
+        init_session()
+        return redirect(url_for('upload_form'))
     return '''
     <form method="post">
     <p><input type=text name=username>
