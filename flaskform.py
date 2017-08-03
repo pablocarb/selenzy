@@ -28,8 +28,6 @@ def arguments():
     parser = argparse.ArgumentParser(description='Options for the webserver')
     parser.add_argument('upload_folder', 
                         help='Upload folder')
-    parser.add_argument('p2env', 
-                        help='Specify path to python 2 environment directory')
     parser.add_argument('datadir',
                         help='specify data directory for required databases files, please end with slash')
     arg = parser.parse_args()
@@ -381,7 +379,6 @@ if __name__== "__main__":  #only run server if file is called directly
 
     app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.upload_folder)
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
-    app.config['PYTHON2'] = os.path.abspath(arg.p2env)
 
     if app.config['PRELOAD']:
         app.config['TABLES'] = Selenzy.preLoad()

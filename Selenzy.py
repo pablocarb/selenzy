@@ -204,17 +204,10 @@ def readRxnCons(consensus):
         
     return (MnxDir)   
     
-def getMnxSim(rxnInput, p2env, datadir, outdir, drxn=0, pc=None):
+def getMnxSim(rxnInput, datadir, outdir, drxn=0, pc=None):
     """ Commmand line arguments of quickRsim """
     args = [os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'mgfp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
     quickRsim.run( quickRsim.arguments(args), pc )
-#    cmd = [p2env, 'quickRsim.py', 
-#           os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'fp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
-#    job = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-#    out, err = job.communicate()
-#    print(out)
-#    global mnx
-#    mnx = []
     MnxSim = {}
     MnxDirPref = readRxnCons(os.path.join(datadir, "rxn_consensus_20160612.txt"))
     MnxDirUsed = {}
@@ -439,7 +432,7 @@ def sort_rows(rows, columns):
     return rows
 
     
-def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None):
+def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None):
     
 
     datadir = os.path.join(datadir)
@@ -456,7 +449,7 @@ def analyse(rxnInput, p2env, targ, datadir, outdir, csvfilename, pdir=0, host='8
 
     print ("Running quickRsim...")
     try:
-        (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, p2env, datadir, outdir, pdir, pc)
+        (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, datadir, outdir, pdir, pc)
     except:
         return False
 
@@ -604,8 +597,6 @@ def arguments():
     parser = argparse.ArgumentParser(description='SeqFind script for Selenzy')
     parser.add_argument('rxn', 
                         help='Input reaction [default = rxn file]')
-    parser.add_argument('p2env', 
-                        help='Specify path to python 2 environment directory')
     parser.add_argument('-tar', type=float, default=20,
                         help='Number of targets to display in results [default = 20]')
     parser.add_argument('-d', type=float, default=0,
@@ -641,20 +632,7 @@ if __name__ == '__main__':
     else:
         rxnInput = ['-rxn', arg.rxn]
 
-    analyse(rxnInput, arg.p2env, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d, arg.host, NoMSA=arg.NoMSA)
-
-#    from os import listdir
-#    from os.path import isfile, join
-#    
-#    WORK = '/home/jerrywzy/Python Scripts/reactions'
-#    
-#    files = [f for f in listdir(WORK) if isfile(join(WORK, f))]
-#
-#    for f in files:
-#        path = 'reactions/' + f
-#        analyse(path, 100, 1)
-#
-
+    analyse(rxnInput, arg.tar, arg.datadir, arg.outdir, arg.outfile, arg.d, arg.host, NoMSA=arg.NoMSA)
 
 
 
