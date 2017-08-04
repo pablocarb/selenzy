@@ -1,4 +1,4 @@
-body            { font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif; font-size: x-small;}
+body            { font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif; font-size: 12px;}
 a, h1, h2       { color: ##151515; }
 h1, h2          { margin: 5; }
 h1              { border-bottom: 2px solid #eee; }
@@ -19,11 +19,14 @@ h1              { border-bottom: 2px solid #eee; }
 .foot {
     clear: both;
 }
-.reaction, .ui-widget-shadow .ui-corner-all {
+.reaction {
 }
 .options {
 }
 .info {
+    width: 600px;
+    max-wdith: 600px;
+    display: inline-block;
 }
 .rquery {
     float: left;
@@ -48,7 +51,7 @@ h1              { border-bottom: 2px solid #eee; }
     font-size: x-small;
 }
 .validate {
-    margin-top: 10px;
+    float: left;
 }
 .status {
     color: red;

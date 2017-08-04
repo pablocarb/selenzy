@@ -10,25 +10,24 @@
 </head>
 <body>
   <div class="mainframe">
+<!--
   <div class="logo">
     <center>
-    <img src="{{url_for('static', filename='resources/png/SYNBIOCHEM.png')}}" alt='SYNBIOCHEM' /> <br />
-    SYNBIOCHEM <b>Selenzy</b> <br/>
+    <img src="{{url_for('static', filename='resources/png/SYNBIOCHEM.png')}}" alt='SYNBIOCHEM' width="50"/> <br />
+    SYNBIOCHEM <b>Selenzy</b><br/>
     Enzyme Selection Tool <p />
     </center>
-    <div class="welcome">
-    Welcome, {{username}}!
-    </div>
     <div class="validate">
       Status: <span class="status">No reaction.</span>
       </div>
   </div>
-
+-->
 
 	<div class="input">
-	<h1>Selenzy</h1>
+	<h1><img src="{{url_for('static', filename='resources/png/SYNBIOCHEM.png')}}" alt='SYNBIOCHEM' width="40"/>
+Selenzy: Enzyme Selection Tool</h1>
 	<fieldset>
-	<legend>Select reactions</legend> 
+	<legend>Select reaction</legend> 
 	<div class="reaction">
 	<form action="uploader" method="POST" enctype = "multipart/form-data" id="front">
 	  <div class="rquery">
@@ -40,7 +39,12 @@
 	    <center><img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/> </center>
 	    <center><span class="Message">Uploading...</span></center>
 	  </div>
+
 	  <div style="clear:both" />
+	  	  <div class="validate">
+	    Status: <span class="status">No reaction.</span>
+	  </div>
+
 	</form>
 	</div>
 	</fieldset>
@@ -72,15 +76,20 @@
 	<fieldset>
 	  <legend>Help</legend>
 	  <div class="info">
-	    	  Welcome to Selenzy, a reaction-centered enzyme selection tool.</br>
-		  Options:
 		  <ul>
-		    <li> <b>Target reaction:</b> Reaction to be used as template for screening. <br/>Allowed formats: MDL RXN, SMILES, SMARTS.</li>
+		  <li><b>Input:</b> a reaction in <a href="https://en.wikipedia.org/wiki/Chemical_table_file">RXN</a> or <a href="https://en.wikipedia.org/wiki/Simplified_molecular-input_line-entry_system">SMILES/SMARTS (SMIRKS)</a> format. Usage examples:</li>
+		  <ul>
+		    <li> Sketch the reaction using a chemical editor, copy it as SMILES and paste on the input box.</li>
+                     <li> Starting from a reaction in a database like <a href="http://www.genome.jp/kegg/">KEGG</a>, <a href="https://metacyc.org/">MetaCyc</a>, <a href="http://biochem4j.org">biochem4j</a>, <a href="http://www.brenda-enzymes.org/">Brenda</a>, etc, navigate to <a href="http://www.rhea-db.org/">Rhea</a>. Locate the <em>[Rhea ID]</em> of the reaction in the forward direction, download the corresponding RXN file in the following URL: <em>http://www.rhea-db.org/rest/1.0/ws/reaction/rxn/[Rhea ID]</em>.</li>
+		    </ul>
+		  <li><b>Options:</b></li>
+		  <ul>
 		    <li> <b>Hits:</b> Number of hits to show.</li>
 		    <li> <b>MSA:</b> Perform multiple sequence alignment and compute conservation score.</li>
-		    <li> <b>Host organism:</b> Compute phylogenetic distance of source organisms to host.</li>
+		    <li> <b>Host organism:</b> Compute phylogenetic distance of source organisms to selected host.</li>
 		    </ul>
-		  Contact: <a href="mailto:pablo.carbonell@manchester.ac.uk">Pablo Carbonell</a>
+		  </ul>
+		  Contact: <a href="mailto:pablo.carbonell@manchester.ac.uk">Pablo Carbonell</a>, SYNBIOCHEM.
 	    <div>
 	  </fieldset>
 	<div class="canvas"><img /></div>
