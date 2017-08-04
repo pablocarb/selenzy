@@ -190,9 +190,12 @@ def post_msa():
     if request.method == 'POST':
         sessionid = json.loads(request.values['sessionid'])
         msafile = os.path.join(app.config['UPLOAD_FOLDER'], sessionid, 'sequences_aln.fasta')
-        if os.path.exists(msafile):
+        treefile = os.path.join(app.config['UPLOAD_FOLDER'], sessionid, 'sequences.dnd')
+        if os.path.exists(msafile) and os.path.exists(treefile):
             msa = open(msafile).readlines()
-            return json.dumps({'msa': ''.join(msa)})
+            tree = open(treefile).readlines()
+            return json.dumps({'msa': ''.join(msa), 'tree': ' '.join(tree)})
+    return redirect ( url_for('upload_form') )
 
 @app.route('/msaview', methods=['GET'])
 def display_msa():
@@ -200,7 +203,10 @@ def display_msa():
     if request.method == 'GET':
         if 'id' in request.values:
             sessionid = request.values['id']
-            return render_template('viewmsa.html', sessionid=sessionid)
+            msafile = os.path.join(app.config['UPLOAD_FOLDER'], sessionid, 'sequences_aln.fasta')
+            if os.path.exists(msafile):
+                return render_template('viewmsa.html', sessionid=sessionid)
+    return redirect ( url_for('upload_form') )
 
 @app.route('/display', methods=['POST'])
 def display_reaction(marvin=app.config['MARVIN']):
