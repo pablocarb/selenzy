@@ -23,6 +23,9 @@ h1              { border-bottom: 2px solid #eee; }
 }
 .options {
 }
+#host {
+    width: 200px;
+}
 .info {
     width: 600px;
     max-wdith: 600px;

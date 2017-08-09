@@ -5,6 +5,18 @@ function toggleVisibility(obj) {
 	obj.css('visibility', 'hidden');
 }
 
+function listOrganisms() {
+    $.ajax({
+	url: "/REST/Source"
+    }).then( function(data) {
+	var width = $('#host').width();
+	$.each(data.data, function(key, value) {
+	    $('#host')
+		.append($('<option>').attr('value', value).text(key)).css('width', width);
+	    });
+//	$('#host').css('width', width);
+    });
+}
 
 function displayReaction(rxninfo) {
     // display reaction
@@ -67,6 +79,7 @@ $(document)
 	function() {
 	    rxnIO();
 	    smartsIO();
+	    listOrganisms();
 	    $('#options').submit(
 		function( event ) {
 		    toggleVisibility( $('.Info2') );

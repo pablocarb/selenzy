@@ -143,10 +143,21 @@ class RestQuery(Resource):
             except:
                 return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': None})
 
+class RestSource(Resource):
+    """ REST interface, returns api info """
+    def get(self):
+        orgs = {}
+        for seq in app.config['ORG']:
+            orgs[app.config['ORG'][seq][1]] = app.config['ORG'][seq][0]
+        return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': orgs})
+
 
 api.add_resource(RestGate, '/REST')
 
 api.add_resource(RestQuery, '/REST/Query')
+
+api.add_resource(RestSource, '/REST/Source')
+
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -183,6 +194,7 @@ def login():
 def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
+
 
 @app.route('/msa', methods=['POST'])
 def post_msa():
@@ -395,6 +407,8 @@ if __name__== "__main__":  #only run server if file is called directly
     else:
         app.config['DEBUG'] = False
         app.config['PRELOAD'] = True        
+
+    app.config['ORG'] = Selenzy.seqOrganism(arg.datadir, "seq_org.tsv")
 
     if app.config['PRELOAD']:
         app.config['TABLES'] = Selenzy.preLoad()
