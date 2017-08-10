@@ -62,6 +62,9 @@ th.selected {
 .Remove {
     float: left;
 }
+.Custom {
+    float: left;
+}
 .Return {
     float: right;
 }
@@ -76,4 +79,18 @@ th.selected {
 .active {
     text-decoration: underline;
     cursor: pointer;
+}
+.hidden {
+    visibility: hidden;
+    width: 0px;
+    height: 0px;
+    margin: 0px;
+    padding: 0px;
+}
+.labfile {
+    cursor: pointer;
+}
+.labwrap {
+    cursor: pointer;
+    vertical-align: middle;
 }

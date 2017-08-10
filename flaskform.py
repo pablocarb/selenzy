@@ -3,9 +3,12 @@
 """
 Created on Thu Feb  9 12:20:49 2017
 
-@author: jerrywzy
+@author: Pablo Carbonell, jerrywzy
 """
 import os, subprocess, glob, time, shutil
+import argparse, uuid, json, csv
+import logging
+from logging.handlers import RotatingFileHandler
 import Selenzy
 from flask import Flask, flash, render_template, request, redirect, url_for, send_from_directory, jsonify
 from flask_restful import Resource, Api
@@ -13,22 +16,21 @@ from flask import session
 from werkzeug import secure_filename
 import pandas as pd
 import numpy as np
-import argparse
-import uuid
-import json
-import csv
 
 app = Flask(__name__)
 api = Api(app)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
 app.config['MARVIN'] = False
+app.config['KEEPDAYS'] = 10
 
 def arguments():
     parser = argparse.ArgumentParser(description='Options for the webserver')
-    parser.add_argument('upload_folder', 
+    parser.add_argument('-uploaddir', default='uploads',
                         help='Upload folder')
-    parser.add_argument('datadir',
+    parser.add_argument('-datadir', default='data',
                         help='Data directory for required databases files')
+    parser.add_argument('-logdir', default='log',
+                        help='Logging folder')    
     parser.add_argument('-d', action='store_true',
                         help='Run in debug mode (no preload)')
     arg = parser.parse_args()
@@ -56,7 +58,7 @@ def save_rxn(rxninfo):
     return rxninfo
 
 def init_session():
-    maintenance()
+    maintenance(app.config['KEEPDAYS'])
     reset_session()
     uniqueid = session['uniqueid']
     uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], uniqueid)
@@ -69,12 +71,14 @@ def init_session():
 
 def reset_session():
     uniqueid = str(uuid.uuid4())
+    app.logger.info( 'New session: %s' % (uniqueid,) )
     session['uniqueid'] = uniqueid
 
 def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
     uniqueid = session['uniqueid']
     uniquefolder = session['uniquefolder']
     csvfile = "selenzy_results.csv"
+    app.logger.info( 'Run session: %s' % (uniqueid,) )
     success, app.config['TABLES'] = Selenzy.analyse(['-'+rxntype, rxninfo], 
                                                     targets,
                                                     app.config['DATA_FOLDER'],  
@@ -116,18 +120,18 @@ def maintenance(expDay=10):
         modiftime = os.path.getmtime(folder)
         lapse = time.time() - modiftime
         if lapse > secs:
-            # Double check that this an upload folder
-            rxnfile = os.path.join(folder, name+'.rxn')
-            if os.path.exists(rxnfile):
+            # Double check that this an upload folder containing reactions
+            if  len( glob.glob( os.path.join(folder, '*.rxn') ) ) > 0:
                 try:
                     for x in glob.glob(os.path.join(folder, '*')):
                         os.unlink(x)
                 except:
                     pass
-                try:
-                    os.rmdir(folder)
-                except:
-                    pass
+            try:
+                os.rmdir(folder)
+                app.logger.info( 'Clean up: %s' % (folder,) )
+            except:
+                pass
 
         
 class RestGate(Resource):
@@ -314,6 +318,43 @@ def sort_table():
         data.rename_axis('Select', axis="columns")
         return json.dumps( {'data': {'csv':  data.to_html(), 'filter': filt}} )
 
+@app.route('/adder', methods=['POST'])
+def add_rows():
+    """ Add rows to table """
+    if request.method == 'POST':
+        if 'session' in request.values:
+            sessionid = request.values['session']
+        else:
+            flash("Bad request")
+            return redirect (request.url)            
+        if 'fasta' in request.files and len(request.files['fasta'].filename) > 0:
+            fileinfo = request.files['fasta']   
+            if fileinfo.filename == '' or not allowed_file(fileinfo.filename):
+                flash("No file selected")
+                return redirect (request.url)
+            uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], sessionid)
+            fastafile = sessionid+'.fasta'
+            uniquename = os.path.join(uniquefolder, sessionid+'.fasta')
+            fileinfo.save(uniquename)
+        # TO do: Check that does not assume Uniprot format...
+        (sequence, names, descriptions, fulldescriptions, osource) = Selenzy.readFasta(uniquefolder, fastafile)
+        csvfile = os.path.join(uniquefolder, 'selenzy_results.csv')
+        head, rows = Selenzy.read_csv(csvfile)
+        for i in range(0, len(fulldescriptions)):
+            row = [None] * len(rows[0])
+            row[0] = names[i]
+            row[1] = fulldescriptions[names[i]]
+            row[2] = osource[names[i]]
+            rows.append(row)
+        Selenzy.write_csv(csvfile, head, rows)
+        data = pd.read_csv(csvfile)
+        data.index = data.index + 1
+        data.rename_axis('Select', axis="columns")
+        # TO DO: update fasta file
+        return json.dumps( {'data': {'csv':  data.to_html()}} )
+
+
+
 @app.route('/remover', methods=['POST'])
 def delete_rows():
     """ Sorts table """
@@ -436,10 +477,13 @@ def results_file(sessionid,filename):
 if __name__== "__main__":  #only run server if file is called directly
 
     arg = arguments()
-    ALLOWED_EXTENSIONS = set(['rxn', 'smi', ' '])
+    
 
-    app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.upload_folder)
+    app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.uploaddir)
+    app.config['LOG_FOLDER'] = os.path.abspath(arg.logdir)
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
+
+
 
     if arg.d:
         app.config['DEBUG'] = True
@@ -454,6 +498,12 @@ if __name__== "__main__":  #only run server if file is called directly
         app.config['TABLES'] = Selenzy.readData(arg.datadir)
     else:
         app.config['TABLES'] = None
+
+    handler = RotatingFileHandler(os.path.join(app.config['LOG_FOLDER'], 'selenzy.log'), maxBytes=10000, backupCount=1)
+
+    log = logging.getLogger('werkzeug')
+    log.addHandler(handler)
+    app.logger.addHandler(handler)
 
     app.run(host="0.0.0.0",port=5000, debug=app.config['DEBUG'], threaded=True)
 #    app.run(port=5000, debug=True)

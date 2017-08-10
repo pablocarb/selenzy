@@ -14,6 +14,19 @@
   <div class="Remove Selector"><a href="#">[Delete selected rows]</a></div>
   <div class="Navigate Selector"></div>
 <!--    <div class="Filter Selector"></div> -->
+  <div class="Custom Selector">
+    <center>
+      <div class="labwrap">
+	  <a href='#'>
+	    <label for="fasta" class="labfile">[Add custom sequences (FASTA)]</label>
+	  </a>
+	<form action="adder" method="POST" enctype = "multipart/form-data" id="add" class="hidden">
+	  <input type="file" name="fasta" id="fasta" class="hidden"></input>
+	  <input type="hidden" name="session" value="{{sessionid}}"></input>
+	</form>
+      </div>
+    </center>
+  </div>
   <div class="Return Selector"><a href="/">[New query]</a></div>
   <div style="clear: both;"></div>
   <h2></h2>

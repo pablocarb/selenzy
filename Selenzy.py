@@ -179,14 +179,22 @@ def readFasta(datadir, fileFasta):
     
     for seq_record in SeqIO.parse(os.path.join(datadir, fileFasta), "fasta"):
         ming = seq_record.id
-        idonly = re.search(r'\|(.*?)\|',ming)
-        x = idonly.group(1)
+        try:
+            idonly = re.search(r'\|(.*?)\|',ming)
+            x = idonly.group(1)
+        except:
+            x = ming
         fulldesc = seq_record.description
         desc = fulldesc.rsplit('OS=')[0]
-        shortdesc = " ".join(desc.split()[1:])
-        orgsource = fulldesc.rsplit('OS=')[1]
+        try:
+            shortdesc = " ".join(desc.split()[1:])
+        except:
+            shortdesc = desc
+        try:
+            orgsource = fulldesc.rsplit('OS=')[1]
+        except:
+            orgsource = '-'
         shortos = orgsource.rsplit('GN=')[0]
-    #    o = shortos.group(1)
         if ',' in shortdesc:
             y = shortdesc.replace(",", ";")
         else:
@@ -201,11 +209,6 @@ def readFasta(datadir, fileFasta):
         osource[x]=shortos
         fulldescriptions[x] = fulldesc
         
-#    with open('sequences.json', 'w') as f:
-#        json.dump(sequence, f)
-    
-#    with open('descriptions.json', 'w') as f2:
-#        json.dump(descriptions, f2)
     
     
     return (sequence, names, descriptions, fulldescriptions, osource)
@@ -434,7 +437,7 @@ def read_csv(csvfile):
 
 def write_csv(csvfilepath, head, rows):
     with open (csvfilepath, 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
         writer.writerow(head)
         for r in rows:
             writer.writerow(r)
@@ -450,7 +453,10 @@ def sort_rows(rows, columns):
                 except:
                     rows.sort(key = lambda x: x[abs(key)-1], reverse=True)
             else:
-                rows.sort(key = lambda x: x[key-1])
+                try:
+                    rows.sort(key = lambda x: float(x[key-1]))
+                except:
+                    rows.sort(key = lambda x: x[key-1])
     return rows
 
 def write_fasta(fastaFile, targets, pc, short=False):
@@ -503,8 +509,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     clstrep = pc.clstrep
     smir = pc.smir
 
-    targplus = int(targ)*3
-    list_mnx = sorted(MnxSim, key=MnxSim.__getitem__, reverse=True)[:int(targplus)]  #allow user to manipulate window of initial rxn id list
+    list_mnx = sorted(MnxSim, key=MnxSim.__getitem__, reverse=True)  #allow user to manipulate window of initial rxn id list
     print ("Creating initial MNX list...")
     targets = set()
     UprotToMnx = {}
@@ -521,7 +526,10 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
                     try:
                         targets.add(y)
                     except KeyError:
-                        pass 
+                        pass
+            else:
+                continue
+            break
 
     fastaFile = os.path.join(outdir, "sequences.fasta")
     write_fasta(fastaFile, targets, pc)
@@ -538,6 +546,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     # final table, do all data and value storing before this!
     tdist = {}
     rows = []
+
     for y in targets:
         try:
             # Essential sequence information

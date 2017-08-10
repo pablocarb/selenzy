@@ -88,6 +88,37 @@ function sortTable(valueSelected) {
     });
 }
 
+function addRows() {
+    // Add rows from FASTA file
+     $( '#add' ).change( function() {
+	 if ( $( '#fasta' ).val() != '' ) {
+	     $( '#add' ).submit();
+	 }
+     });
+
+    $( '#add' ).submit(
+	function( event ) {
+	    var form = new FormData( this );
+	    $.ajax({
+		data : form,
+		processData: false,
+		contentType: false,		
+		type : 'POST',
+		url : '/adder',
+		success : function(serverdata) {
+		    data = JSON.parse(serverdata);
+		    $('.Selenzy').replaceWith(data.data.csv);
+		    // Avoid propagation of the click event
+		},
+		error : function() {
+		    console.log('Sorry, no luck');
+		}
+	    });
+	});
+}
+
+
+
 function deleteRows() {
     // Delete selected rows
     $.ajax({	
@@ -163,6 +194,7 @@ function addNavigation() {
 
     $( '.Navigate' ).append(csvTag).append(fastaTag).append(msaTag).append(msaViewTag);
 
+    addRows();
 }
 
 
@@ -202,19 +234,85 @@ function addSelection() {
 	    if ($( this ).hasClass('selected')) {
 		$( this ).removeClass('selected');
 		$( this ).parent().removeClass('selected');
+
+		if (event.shiftKey) {
+		    document.getSelection().removeAllRanges();
+		    $( this ).addClass('currentunselection');
+		    var last = -1;
+		    var current = -1;
+		    var rows = [];
+		    $.each( $( 'tbody th'), function( i, value) {
+			rows[i] = $( value );
+			if ( $( value ).hasClass('currentunselection') ) {
+			    current = i;
+			    } 
+			if ( $( value).parent().hasClass('lastunselected') ) {
+			    last = i;
+			    }
+		    });
+		    if ( (last >= 0) & (current >= 0) ) {
+			for ( i= Math.min(last, current); i != Math.max(last, current); i++ ) {
+			    rows[i].removeClass('selected');
+			    rows[i].parent().removeClass('selected');
+			}
+		    }
+
+		    $( this ).removeClass('currentunselection');
+		}
+
+
+
 		if ( selectedRows().length == 0 ) {
 		    $( '.Remove' ).addClass('disabledbutton');
 		}
+		$.each( $( 'tbody th'), function( i, value) {
+		    $( value ).parent().removeClass('lastselected');
+		    $( value ).parent().removeClass('lastunselected');
+		});
+		$( this ).parent().addClass('lastunselected');
+
 	    } else {
 		$( this ).addClass('selected');
 		$( this ).parent().addClass('selected');			
 		$( '.Remove' ).removeClass('disabledbutton');
+
+		if (event.shiftKey) {
+		    document.getSelection().removeAllRanges();
+		    $( this ).addClass('currentselection');
+		    var last = -1;
+		    var current = -1;
+		    var rows = [];
+		    $.each( $( 'tbody th'), function( i, value) {
+			rows[i] = $( value );
+			if ( $( value ).hasClass('currentselection') ) {
+			    current = i;
+			    } 
+			if ( $( value).parent().hasClass('lastselected') ) {
+			    last = i;
+			    }
+		    });
+		    if ( (last >= 0) & (current >= 0) ) {
+			for ( i= Math.min(last, current); i != Math.max(last, current); i++ ) {
+			    rows[i].addClass('selected');
+			    rows[i].parent().addClass('selected');
+			}
+		    }
+
+		    $( this ).removeClass('currentselection');
+		}
+
+		$.each( $( 'tbody th'), function( i, value) {
+		    $( value ).parent().removeClass('lastselected');
+		    $( value ).parent().removeClass('lastunselected');
+		});
+		$( this ).parent().addClass('lastselected');
+
 	    }
 	}
     );
     
     $('.Selenzy tbody tr th').attr('title', 'Select row');
-
+    lastSelection = 0;
 }
 
 
