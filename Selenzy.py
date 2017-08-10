@@ -20,10 +20,11 @@ class preLoad(object):
         pass
 
     def fasta(self, datadir, ffile="seqs.fasta"):
-        (sequence, names, descriptions, osource) = readFasta(datadir, ffile)
+        (sequence, names, descriptions, fulldescriptions, osource) = readFasta(datadir, ffile)
         self.sequence = sequence
         self.names = names
         self.descriptions = descriptions
+        self.fulldescriptions = fulldescriptions
         self.osource = osource
 
     def fp(self, datadir, fpfile):
@@ -34,7 +35,13 @@ class preLoad(object):
 
     def seqData(self, datadir, fl):
         with open(os.path.join(datadir, fl[0])) as f:
-            self.MnxToUprot = json.load(f)
+            self.MnxToUprot = {}
+            for row in f:
+                mnxr, db, seqid, source, ec = row.split('\t')
+                if db == 'uniprot':
+                    if mnxr not in self.MnxToUprot:
+                        self.MnxToUprot[mnxr] = set()
+                    self.MnxToUprot[mnxr].add(seqid)
         
         with open(os.path.join(datadir, fl[1])) as f2:
             self.upclst = json.load(f2)
@@ -49,6 +56,15 @@ class preLoad(object):
             self.smir = {}
             if os.path.exists(smiFile):
                 self.smir = reactionSmiles(smiFile)
+
+def readData(datadir):
+    """ Read all data into memory """
+    pc = preLoad()
+    pc.fasta(datadir, 'seqs.fasta')
+    pc.fp(datadir, 'mgfp.npz')
+    pc.seqData(datadir, ['reac_seqs.tsv', 'upclst.json', 'clstrep.json', "seq_org.tsv", "org_lineage.csv"])
+    pc.reacData(datadir, 'reac_smi.csv')
+    return pc
 
 
 def sanitizeRxn(rxninfo, outrxn):
@@ -155,6 +171,7 @@ def readFasta(datadir, fileFasta):
     
     sequence = {}
     descriptions = {}
+    fulldescriptions = {}
     osource = {}
     names = []
     seen = set()
@@ -164,7 +181,6 @@ def readFasta(datadir, fileFasta):
         ming = seq_record.id
         idonly = re.search(r'\|(.*?)\|',ming)
         x = idonly.group(1)
-        
         fulldesc = seq_record.description
         desc = fulldesc.rsplit('OS=')[0]
         shortdesc = " ".join(desc.split()[1:])
@@ -183,7 +199,7 @@ def readFasta(datadir, fileFasta):
         sequence[x]=(myseq)
         descriptions[x]= y
         osource[x]=shortos
-    
+        fulldescriptions[x] = fulldesc
         
 #    with open('sequences.json', 'w') as f:
 #        json.dump(sequence, f)
@@ -192,7 +208,7 @@ def readFasta(datadir, fileFasta):
 #        json.dump(descriptions, f2)
     
     
-    return (sequence, names, descriptions, osource)
+    return (sequence, names, descriptions, fulldescriptions, osource)
  
 def readRxnCons(consensus):
     
@@ -310,7 +326,7 @@ def pepstats(file, outdir):
     for line in f:
         if "PEPSTATS of" in line:
             splitdata = line.split()
-            seq = splitdata[2]
+            seq = splitdata[2].split('_')[0]
         elif "Molecular weight = " in line:
             splitdata = line.split()
             w = splitdata[3]
@@ -363,7 +379,7 @@ def garnier(file, outdir):
     for line in f:
         if "Sequence:" in line:
             splitdata = line.split()
-            seq = splitdata[2]
+            seq = splitdata[2].split('_')[0]
         elif "percent:" in line:
             percents = line.split()
             h = percents[3]
@@ -399,6 +415,8 @@ def doMSA(finallistfile, outdir):
         if "   :  " in line:
             splitdata = line.split()
             upid = splitdata[0]
+            if len(upid.split('|')) > 1:
+                   upid = upid.split('|')[1]
             score = splitdata[2]
             cons[upid] = score
             
@@ -435,6 +453,19 @@ def sort_rows(rows, columns):
                 rows.sort(key = lambda x: x[key-1])
     return rows
 
+def write_fasta(fastaFile, targets, pc, short=False):
+    with open(fastaFile, "w") as f:
+        for t in targets:
+            try: 
+                seq = pc.sequence[t]
+                if short:
+                    print ('>{0} \n{1}'.format(t, seq), file=f)
+                else:
+                    fdesc = pc.fulldescriptions[t]
+                    print ('>{0} \n{1}'.format(fdesc, seq), file=f)
+            except KeyError:
+                pass
+
     
 def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None):
     
@@ -449,47 +480,31 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
         csvfilename = csvfilename
     else:
         csvfilename = "results_selenzy.csv"
+    print ("Acquiring databases...")
+    if pc is None:
+        pc = readData(datadir)    
     
-
     print ("Running quickRsim...")
     try:
         (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, datadir, outdir, pdir, pc)
     except:
-        return False
+        return False, pc
 
 
-    print ("Acquiring databases...")
-    if pc is not None:
-        sequence = pc.sequence
-        names = pc.names
-        descriptions = pc.descriptions
-        osource = pc.osource
-        seqorg = pc.seqorg
-        tax = pc.tax
-        MnxToUprot = pc.MnxToUprot
-        upclst = pc.upclst
-        clstrep = pc.clstrep
-        smir = pc.smir
-    else:
-        (sequence, names, descriptions, osource) = readFasta(datadir, "seqs.fasta")
-        seqorg = seqOrganism(datadir, "seq_org.tsv")
-        tax = readTaxonomy(datadir, "org_lineage.csv")
-        with open(os.path.join(datadir, 'MnxToUprot.json')) as f:
-            MnxToUprot = json.load(f)
-        with open (os.path.join(datadir, 'upclst.json')) as f2:
-            upclst = json.load(f2)
-        with open (os.path.join(datadir, 'clstrep.json')) as f3:
-            clstrep= json.load(f3)
-        smiFile = os.path.join(datadir, 'reac_smi.csv')
-        smir = {}
-        if os.path.exists(smiFile):
-            smir = reactionSmiles(smiFile)
-
+    sequence = pc.sequence
+    names = pc.names
+    descriptions = pc.descriptions
+    fulldescriptions = pc.fulldescriptions
+    osource = pc.osource
+    seqorg = pc.seqorg
+    tax = pc.tax
+    MnxToUprot = pc.MnxToUprot
+    upclst = pc.upclst
+    clstrep = pc.clstrep
+    smir = pc.smir
 
     targplus = int(targ)*3
     list_mnx = sorted(MnxSim, key=MnxSim.__getitem__, reverse=True)[:int(targplus)]  #allow user to manipulate window of initial rxn id list
-    fastaFile = os.path.join(outdir, "sequences.fasta")
-    f = open(fastaFile, "w")
     print ("Creating initial MNX list...")
     targets = set()
     UprotToMnx = {}
@@ -504,26 +519,20 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
                 else:
                     UprotToMnx[y] = x
                     try:
-#                        cn = clustar.getClustNo(y)
-#                        repid = clustar.getRepID(cn)
                         targets.add(y)
                     except KeyError:
                         pass 
-  
-    for t in targets:
-        try: 
-            seq = sequence[t]
-            print ('>{0} \n{1}'.format(t, seq), file=f)
-        except KeyError:
-            pass
 
-                    
-    f.close()
+    fastaFile = os.path.join(outdir, "sequences.fasta")
+    write_fasta(fastaFile, targets, pc)
+    # Avoid issues with sequence ids
+    fastaShortNameFile = os.path.join(outdir, "seqids.fasta")
+    write_fasta(fastaShortNameFile, targets, pc, short=True)
     #analysis of FinalList of sequences
-    (hydrop, weight, isoelec, polar) = pepstats(fastaFile, outdir)
-    (helices, sheets, turns, coils) = garnier(fastaFile, outdir)
+    (hydrop, weight, isoelec, polar) = pepstats(fastaShortNameFile, outdir)
+    (helices, sheets, turns, coils) = garnier(fastaShortNameFile, outdir)
     if not NoMSA:
-        cons = doMSA(fastaFile, outdir)
+        cons = doMSA(fastaShortNameFile, outdir)
     
     print ("Acquiring sequence properties...")
     # final table, do all data and value storing before this!
@@ -531,13 +540,21 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     rows = []
     for y in targets:
         try:
-            desc = descriptions[y] 
+            # Essential sequence information
+            desc = descriptions[y]
+            fdesc = fulldescriptions[y]
             org = osource[y]
             mnx = UprotToMnx[y]
-            cn = upclst.get(y)
-            repid = clstrep[cn]
             rxnsimpre = float(MnxSim[mnx])
             rxnsim = float("{0:.5f}".format(rxnsimpre))
+
+            # Non-essential sequence information
+            try:
+                cn = upclst.get(y)
+                repid = clstrep[cn]
+            except:
+                cn = 0
+                repid = y
             try:
                 conservation = float(cons[y])
             except:
@@ -547,23 +564,30 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
             except:
                 ecid = ''
             try:
-
                 h = helices[y]
                 e = sheets[y]
                 t = turns[y]
                 c = coils[y]
             except:
-                h = 0.0
-                e = 0.0
-                t = 0.0
-                c = 0.0
-            w = weight[y]
-            i = isoelec[y]
-            pol = polar[y]
-            
-            rxndirused = MnxDirUsed[mnx]
-            rxndirpref = MnxDirPref[mnx]
-            
+                h = '-'
+                e = '-'
+                t = '-'
+                c = '-'
+            try:
+                w = weight[y]
+                i = isoelec[y]
+                pol = polar[y]
+            except:
+                w = '-'
+                i = '-'
+                pol = '-'
+            try:
+                rxndirused = MnxDirUsed[mnx]
+                rxndirpref = MnxDirPref[mnx]
+            except:
+                rxndirused = 1
+                rxndirpred = 1
+
             mnxSmiles = ''
             if mnx in smir:
                 if rxndirused == 1:
@@ -575,6 +599,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
                     tdist[org] = taxDistance(tax, host, seqorg[y][0])
                 else:
                     tdist[org] = '-'
+
             rows.append( (y, desc, org, tdist[org], mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
 
        
@@ -591,7 +616,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     write_csv(os.path.join(outdir, csvfilename), head, sortrows)
 
     print ("CSV file created.")
-    return True
+    return True, pc
     
     
 def arguments():

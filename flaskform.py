@@ -5,7 +5,7 @@ Created on Thu Feb  9 12:20:49 2017
 
 @author: jerrywzy
 """
-import os, subprocess
+import os, subprocess, glob, time, shutil
 import Selenzy
 from flask import Flask, flash, render_template, request, redirect, url_for, send_from_directory, jsonify
 from flask_restful import Resource, Api
@@ -56,6 +56,7 @@ def save_rxn(rxninfo):
     return rxninfo
 
 def init_session():
+    maintenance()
     reset_session()
     uniqueid = session['uniqueid']
     uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], uniqueid)
@@ -74,15 +75,15 @@ def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
     uniqueid = session['uniqueid']
     uniquefolder = session['uniquefolder']
     csvfile = "selenzy_results.csv"
-    success = Selenzy.analyse(['-'+rxntype, rxninfo], 
-                    targets,
-                    app.config['DATA_FOLDER'],  
-                    uniquefolder,
-                    csvfile,
-                    pdir = int(direction),
-                    host = host,
-                    NoMSA = noMSA,
-                    pc = app.config['TABLES']
+    success, app.config['TABLES'] = Selenzy.analyse(['-'+rxntype, rxninfo], 
+                                                    targets,
+                                                    app.config['DATA_FOLDER'],  
+                                                    uniquefolder,
+                                                    csvfile,
+                                                    pdir = int(direction),
+                                                    host = host,
+                                                    NoMSA = noMSA,
+                                                    pc = app.config['TABLES']
     ) # this creates CSV file in Uploads directory
     if success:
         data = pd.read_csv(file_path(uniqueid, csvfile))
@@ -106,7 +107,29 @@ def retrieve_session(csvinfo):
     return data, csvfile, uniqueid
 
 
+def maintenance(expDay=10):
+    secs = expDay*24*60*60
+    for folder in glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], '*')):
+        name = os.path.basename(folder)
+        if name.startswith('debug'):
+            continue
+        modiftime = os.path.getmtime(folder)
+        lapse = time.time() - modiftime
+        if lapse > secs:
+            # Double check that this an upload folder
+            rxnfile = os.path.join(folder, name+'.rxn')
+            if os.path.exists(rxnfile):
+                try:
+                    for x in glob.glob(os.path.join(folder, '*')):
+                        os.unlink(x)
+                except:
+                    pass
+                try:
+                    os.rmdir(folder)
+                except:
+                    pass
 
+        
 class RestGate(Resource):
     """ REST interface, returns api info """
     def get(self):
@@ -298,7 +321,8 @@ def delete_rows():
         selrows = json.loads(request.values.get('filter'))
         session = json.loads(request.values.get('session'))
         csvname = os.path.basename(json.loads(request.values.get('csv')))
-        csvfile = os.path.join(app.config['UPLOAD_FOLDER'], session, csvname)
+        outdir = os.path.join(app.config['UPLOAD_FOLDER'], session)
+        csvfile = os.path.join(outdir, csvname)
         head, rows = Selenzy.read_csv(csvfile)
         filt = []
         for i in selrows:
@@ -307,10 +331,26 @@ def delete_rows():
                 filt.append(index)
             except:
                 continue
+        newtargets = []
         newrows = []
         for j in range(0, len(rows)):
             if j not in filt:
+                newtargets.append(rows[j][0])
                 newrows.append(rows[j])
+        fastaFile = os.path.join(outdir, "sequences.fasta")
+        Selenzy.write_fasta(fastaFile, newtargets, app.config['TABLES'])
+        # Avoid issues with sequence ids
+        fastaShortNameFile = os.path.join(outdir, "seqids.fasta")
+        Selenzy.write_fasta(fastaShortNameFile, newtargets, app.config['TABLES'], short=True)
+        # Recompute MSA if exists
+        dndFile = os.path.join(outdir, 'sequences.dnd')
+        if os.path.exists(dndFile):
+            cons = Selenzy.doMSA(fastaShortNameFile, outdir)
+            for i in range(0, len(newrows)):
+                try:
+                    newrows[i][head.index('Consv. Score')] = cons[newrows[i][head.index('Seq. ID')]]
+                except:
+                    pass
         Selenzy.write_csv(csvfile, head, newrows)
         data = pd.read_csv(csvfile)
         data.index = data.index + 1
@@ -411,11 +451,7 @@ if __name__== "__main__":  #only run server if file is called directly
     app.config['ORG'] = Selenzy.seqOrganism(arg.datadir, "seq_org.tsv")
 
     if app.config['PRELOAD']:
-        app.config['TABLES'] = Selenzy.preLoad()
-        app.config['TABLES'].fasta(arg.datadir, 'seqs.fasta')
-        app.config['TABLES'].fp(arg.datadir, 'mgfp.npz')
-        app.config['TABLES'].seqData(arg.datadir, ['MnxToUprot.json', 'upclst.json', 'clstrep.json', "seq_org.tsv", "org_lineage.csv"])
-        app.config['TABLES'].reacData(arg.datadir, 'reac_smi.csv')
+        app.config['TABLES'] = Selenzy.readData(arg.datadir)
     else:
         app.config['TABLES'] = None
 

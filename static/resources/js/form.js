@@ -12,7 +12,7 @@ function listOrganisms() {
 	var width = $('#host').width();
 	$.each(data.data, function(key, value) {
 	    $('#host')
-		.append($('<option>').attr('value', value).text(key)).css('width', width);
+		.append($('<option>').attr('value', value).text(key));
 	    });
 //	$('#host').css('width', width);
     });
