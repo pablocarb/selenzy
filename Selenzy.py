@@ -165,7 +165,7 @@ def taxDistance(tax, host, target):
     else:
         return '-'
 
-def readFasta(datadir, fileFasta):
+def readFasta(datadir, fileFasta, limit=None):
     
     from Bio import SeqIO
     
@@ -209,9 +209,12 @@ def readFasta(datadir, fileFasta):
         osource[x]=shortos
         fulldescriptions[x] = fulldesc
         # A practical limit hardcoded
-        if len(sequence) > 1000:
-            break
-        
+        if limit is not None:
+            try:
+                if len(sequence) > limit:
+                    break
+            except:
+                continue
     
     return (sequence, names, descriptions, fulldescriptions, osource)
  
@@ -495,7 +498,7 @@ def extend_sequences(initialfastafile, fastafile, workfolder, noMSA):
     shortfile = short_fasta(os.path.join(workfolder, fastafile))
     try:
         # TO do: Check that does not assume Uniprot format...
-        (sequence, names, descriptions, fulldescriptions, osource) = readFasta(workfolder, fastafile)
+        (sequence, names, descriptions, fulldescriptions, osource) = readFasta(workfolder, fastafile, limit=1000)
         
         if len(sequence) == 0:
             return csvfile
@@ -610,6 +613,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     targets = set()
     UprotToMnx = {}
     
+
     # first creating fasta file, f, for further data extraction
     for x in list_mnx:
         up = MnxToUprot.get(x)  

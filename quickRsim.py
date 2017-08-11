@@ -250,8 +250,8 @@ def arguments(args=None):
                         help='Input reaction SMARTS file')
     parser.add_argument('-chem', 
                         help='Metanetx chemical structures (if input is reaction id)')
-    parser.add_argument('-th', type=float, default=0.6, 
-                        help='Similarity threshold [default=0.6]')
+    parser.add_argument('-th', type=float, default=0.8, 
+                        help='Similarity threshold [default=0.8]')
     parser.add_argument('-out', 
                         help='Output results in .txt file, please specify file name')
     parser.add_argument('-high', 
