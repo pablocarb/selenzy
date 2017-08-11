@@ -20,7 +20,8 @@
 	  <a href='#'>
 	    <label for="fasta" class="labfile">[Add custom sequences (FASTA)]</label>
 	  </a>
-	<form action="adder" method="POST" enctype = "multipart/form-data" id="add" class="hidden">
+<!--	<form method="POST" action="results" enctype = "multipart/form-data" id="add" class="hidden"> -->
+	<form enctype = "multipart/form-data" id="add" class="hidden">
 	  <input type="file" name="fasta" id="fasta" class="hidden"></input>
 	  <input type="hidden" name="session" value="{{sessionid}}"></input>
 	</form>

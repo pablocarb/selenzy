@@ -334,25 +334,19 @@ def add_rows():
                 return redirect (request.url)
             uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], sessionid)
             fastafile = sessionid+'.fasta'
-            uniquename = os.path.join(uniquefolder, sessionid+'.fasta')
+            uniquename = os.path.join(uniquefolder, fastafile)
             fileinfo.save(uniquename)
-        # TO do: Check that does not assume Uniprot format...
-        (sequence, names, descriptions, fulldescriptions, osource) = Selenzy.readFasta(uniquefolder, fastafile)
-        csvfile = os.path.join(uniquefolder, 'selenzy_results.csv')
-        head, rows = Selenzy.read_csv(csvfile)
-        for i in range(0, len(fulldescriptions)):
-            row = [None] * len(rows[0])
-            row[0] = names[i]
-            row[1] = fulldescriptions[names[i]]
-            row[2] = osource[names[i]]
-            rows.append(row)
-        Selenzy.write_csv(csvfile, head, rows)
-        data = pd.read_csv(csvfile)
-        data.index = data.index + 1
-        data.rename_axis('Select', axis="columns")
-        # TO DO: update fasta file
-        return json.dumps( {'data': {'csv':  data.to_html()}} )
-
+            dndFile = os.path.join(uniquefolder, 'sequences.dnd')
+            if os.path.exists(dndFile):
+                noMSA = False
+            else:
+                noMSA = True
+            csvfile = Selenzy.extend_sequences('sequences.fasta', fastafile, uniquefolder, noMSA)
+            data = pd.read_csv(csvfile)
+            data.index = data.index + 1
+            data.rename_axis('Select', axis="columns")
+            # TO DO: update fasta file
+            return json.dumps( {'data': {'csv':  data.to_html()}} )
 
 
 @app.route('/remover', methods=['POST'])
@@ -403,7 +397,7 @@ def delete_rows():
 @app.route('/debug', methods=['GET'])
 def show_table():
     if app.debug == True:
-        csvfile = os.path.join('uploads', 'debug', 'selenzy_results.csv')
+        csvfile = os.path.join(app.config['UPLOAD_FOLDER'], 'debug', 'selenzy_results.csv')
         data = pd.read_csv(csvfile)
         data.index = data.index + 1
         sessionid = 'debug'
@@ -447,26 +441,31 @@ def upload_file():
         except:
             return redirect( url_for("upload_form") )
     elif request.method == 'GET':
-        """ A GET request would require an independently initialised session """
-        init_session()
-        smarts = request.args.get('smarts')
-        if smarts is None:
-            return redirect( url_for("upload_form") )
-        host = request.args.get('host')
-        if smarts is None:
-            host = '83333'
-        rxntype = 'smarts'
-        rxninfo = smarts
-        direction = 0
-        noMSA = False
-        targets = 20
-        session['rxninfo'] = rxninfo
-        session['rxntype'] = rxntype
-        try:
-            data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
-        except:
-            return redirect( url_for("upload_form") )
+        if request.args.get('fasta') is not None:
+            """ This is a request that is handled by ajax, do not return anything """
+            sessionid = request.args.get('session')
+            return ('', 204)
+        else:
+            """ A GET request would require an independently initialised session """
+            init_session()
+            smarts = request.args.get('smarts')
+            if smarts is None:
+                return redirect( url_for("upload_form") )
+            host = request.args.get('host')
+            if smarts is None:
+                host = '83333'
+            rxntype = 'smarts'
+            rxninfo = smarts
+            direction = 0
+            noMSA = False
+            targets = 20
+            session['rxninfo'] = rxninfo
+            session['rxntype'] = rxntype
+            try:
+                data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
+                return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
+            except:
+                return redirect( url_for("upload_form") )
     return redirect( url_for("upload_form") )
     
 @app.route('/results/<sessionid>/files/<filename>')

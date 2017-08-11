@@ -98,9 +98,8 @@ function addRows() {
 
     $( '#add' ).submit(
 	function( event ) {
-	    var form = new FormData( this );
 	    $.ajax({
-		data : form,
+		data: new FormData( this ),
 		processData: false,
 		contentType: false,		
 		type : 'POST',
@@ -108,6 +107,7 @@ function addRows() {
 		success : function(serverdata) {
 		    data = JSON.parse(serverdata);
 		    $('.Selenzy').replaceWith(data.data.csv);
+		    formatTable();
 		    // Avoid propagation of the click event
 		},
 		error : function() {

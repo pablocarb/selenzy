@@ -3,7 +3,7 @@
 """
 Created on Tue Feb  7 10:53:03 2017
 
-@author: jerrywzy
+@author: jerrywzy, Pablo CArbonell
 """
 import re
 import os, subprocess
@@ -208,8 +208,10 @@ def readFasta(datadir, fileFasta):
         descriptions[x]= y
         osource[x]=shortos
         fulldescriptions[x] = fulldesc
+        # A practical limit hardcoded
+        if len(sequence) > 1000:
+            break
         
-    
     
     return (sequence, names, descriptions, fulldescriptions, osource)
  
@@ -471,7 +473,101 @@ def write_fasta(fastaFile, targets, pc, short=False):
                     print ('>{0} \n{1}'.format(fdesc, seq), file=f)
             except KeyError:
                 pass
+def short_fasta(fastafile):
+    dirname = os.path.dirname(fastafile)
+    basename = os.path.basename(fastafile)
+    shortfile = 'short_'+basename
+    shortname = os.path.join(dirname, shortfile)
+    with open(fastafile) as fasta, open(shortname, 'w') as fastaw:
+        for line in fasta:
+            if line.startswith('>'):
+                head = line.split('OS=')
+                if len(head[0].split('|')) >= 2:
+                    seqid = head[0].split('|')[1]
+                    line = '>'+seqid+'\n'
+            fastaw.write(line)
+    return shortfile
 
+
+def extend_sequences(initialfastafile, fastafile, workfolder, noMSA):
+    """ Extend the fasta file """
+    csvfile = os.path.join(workfolder, 'selenzy_results.csv')
+    shortfile = short_fasta(os.path.join(workfolder, fastafile))
+    try:
+        # TO do: Check that does not assume Uniprot format...
+        (sequence, names, descriptions, fulldescriptions, osource) = readFasta(workfolder, fastafile)
+        
+        if len(sequence) == 0:
+            return csvfile
+
+        (hydrop, weight, isoelec, polar, helices, sheets, turns, coils) = sequence_properties(os.path.join(workfolder, shortfile))
+        fasta = open(os.path.join(workfolder, initialfastafile)).readlines()
+        fasta.extend(open(os.path.join(workfolder, fastafile)).readlines())
+        with open(os.path.join(workfolder, initialfastafile), 'w') as handler:
+            for line in fasta:
+                handler.write(line)
+        shortfile = short_fasta(os.path.join(workfolder, initialfastafile))
+        if not noMSA:
+            cons = conservation_properties(os.path.join(workfolder, shortfile))
+        else:
+            cons = {}
+        
+    except:
+        return csvfile
+    # Extend the csvfile
+    head, rows = read_csv(csvfile)
+    # Update the conservation scores
+    if not noMSA:
+        for r in rows:
+            seqid = r[head.index('Seq. ID')]
+            if seqid in cons:
+                r[head.index('Consv. Score')] = cons[seqid]
+    for k in range(0, len(fulldescriptions)):
+        n = names[k]
+        try:
+            conservation = cons[n]
+        except:
+            conservation = 0
+        try:
+            h = helices[n]
+            e = sheets[n]
+            t = turns[n]
+            c = coils[n]
+        except:
+            h = '-'
+            e = '-'
+            t = '-'
+            c = '-'
+        try:
+            w = weight[n]
+            i = isoelec[n]
+            pol = polar[n]
+        except:
+            w = '-'
+            i = '-'
+            pol = '-'
+        try:
+            description = descriptions[n]
+            source = osource[n]
+        except:
+            description = '-'
+            source = '-'
+        row = [n, description, source, -1,
+               '-', '-', 0, n, conservation, 1, 1, 1,
+               h, e, t, c, w, i, pol, '-', '-']
+        rows.append( row )
+    write_csv(csvfile, head, rows)
+    return csvfile
+
+def sequence_properties(fastaShortNameFile):
+    #analysis of FinalList of sequences
+    (hydrop, weight, isoelec, polar) = pepstats(fastaShortNameFile, os.path.dirname(fastaShortNameFile))
+    (helices, sheets, turns, coils) = garnier(fastaShortNameFile,  os.path.dirname(fastaShortNameFile))
+    return hydrop, weight, isoelec, polar, helices, sheets, turns, coils
+
+def conservation_properties(fastaFile):
+    cons = doMSA(fastaFile,  os.path.dirname(fastaFile))
+    return cons
     
 def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None):
     
@@ -536,11 +632,13 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     # Avoid issues with sequence ids
     fastaShortNameFile = os.path.join(outdir, "seqids.fasta")
     write_fasta(fastaShortNameFile, targets, pc, short=True)
-    #analysis of FinalList of sequences
-    (hydrop, weight, isoelec, polar) = pepstats(fastaShortNameFile, outdir)
-    (helices, sheets, turns, coils) = garnier(fastaShortNameFile, outdir)
+    
+
+    (hydrop, weight, isoelec, polar, helices, sheets, turns, coils) = sequence_properties(fastaShortNameFile)
     if not NoMSA:
-        cons = doMSA(fastaShortNameFile, outdir)
+        cons = conservation_properties(fastaShortNameFile)
+    else:
+        cons = {}
     
     print ("Acquiring sequence properties...")
     # final table, do all data and value storing before this!
