@@ -11,7 +11,7 @@ RUN tar -xzvf selenzy.tar.gz
 
 ENTRYPOINT ["python"]
 
-# CMD ["/selenzyPro/flaskform.py", "-uploaddir", "/selenzyPro/uploads", "-datadir", "/selenzyPro/data", "-logdir", "/selenzyPro/log" ]
+CMD ["/selenzyPro/flaskform.py", "-uploaddir", "/selenzyPro/uploads", "-datadir", "/selenzyPro/data", "-logdir", "/selenzyPro/log" ]
 
 EXPOSE 5000
 
