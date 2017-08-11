@@ -630,7 +630,6 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
             else:
                 continue
             break
-
     fastaFile = os.path.join(outdir, "sequences.fasta")
     write_fasta(fastaFile, targets, pc)
     # Avoid issues with sequence ids
