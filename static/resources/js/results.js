@@ -98,6 +98,8 @@ function addRows() {
 
     $( '#add' ).submit(
 	function( event ) {
+	    var mes = $( '.labfile' ).text();
+	    $( '.labfile' ).text('[Submitting sequences..]');
 	    $.ajax({
 		data: new FormData( this ),
 		processData: false,
@@ -108,6 +110,7 @@ function addRows() {
 		    data = JSON.parse(serverdata);
 		    $('.Selenzy').replaceWith(data.data.csv);
 		    formatTable();
+		    $( '.labfile' ).text(mes);
 		    // Avoid propagation of the click event
 		},
 		error : function() {

@@ -121,7 +121,7 @@ $(document)
 			}
 		    },
 		    error : function() {
-			resetForm( 'Bad request' );
+			resetForm( 'Bad request or unknown file extension' );
 		    }
 		});
 		event.preventDefault();

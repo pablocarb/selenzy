@@ -22,6 +22,9 @@ api = Api(app)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
 app.config['MARVIN'] = False
 app.config['KEEPDAYS'] = 10
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+ALLOWED_EXTENSIONS = set(['txt', 'rxn', 'smi', 'smarts', 'smirks', 'csv', 'fasta', 'fas', 'fa'])
+
 
 def arguments():
     parser = argparse.ArgumentParser(description='Options for the webserver')
@@ -37,7 +40,7 @@ def arguments():
     return arg
 
 def allowed_file(filename):
-    return filename 
+    return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 
 def file_path(uniqueid, filename):
     uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], uniqueid)
