@@ -89,6 +89,7 @@ def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
                                                     csvfile,
                                                     pdir = int(direction),
                                                     host = host,
+                                                    fp = 'Morgan10',
                                                     NoMSA = noMSA,
                                                     pc = app.config['TABLES']
     ) # this creates CSV file in Uploads directory

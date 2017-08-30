@@ -66,16 +66,17 @@ def getReactionFromSmilesFile(smartsfile, rxnfile):
         handler.write(mdl)
     return storeReaction(smi, rxnfile), smi
 
-def getClosest(smi, fpfile, th=0.8, fp=None, fpn=None, marvin=False):
+def getClosest(smi, fpfile, th=0.8, fp=None, fpn=None, fpp=None, fpfun=None, marvin=False):
     dist = {}
     if fp is None:
         print('Reading fingerprints')
         data = np.load(fpfile)
         fp = data['x'] 
         fpn = data['y']
+        fpp = 5
+        fpfun = GetMorganFingerprint
         data.close()
 
-    radius = 5
     targetMol = Chem.MolFromSmiles(smi)
     # If RDkit fails, we sanitize first using molconvert from ChemAxon, which is more robust
     if targetMol is None and marvin:
@@ -89,7 +90,7 @@ def getClosest(smi, fpfile, th=0.8, fp=None, fpn=None, marvin=False):
             targetMol = Chem.MolFromSmiles(out)
         except:
             pass
-    targetFp = GetMorganFingerprint(targetMol, radius)
+    targetFp = fpfun(targetMol, fpp)
     tn = DataStructs.BulkTanimotoSimilarity(targetFp, list(fp))
     for i in sorted(range(0, len(tn))):
         dist[fpn[i]] = tn[i]
@@ -195,25 +196,31 @@ def run(arg, pc):
                     rTarget[arg.rid][side][struct[s]] = rsp[arg.rid][side][s]
     else:
         raise Exception('No target')
-    sim = {} 
+    sim = {}
+
     # Compute similarities for new reactants
     if pc is not None:
         fp = pc.fp
         fpn = pc.fpn
+        fpp = pc.fpparam
+        fpfun = pc.fpfun
     else:
         fp = None
         fpn = None
+        fpp = None
+        fpfun = None
+        # To do: share fingerprint info into quickRsim...
     for r in rTarget:
         for s in rTarget[r][0]:
             if s not in sim:
                 try:
-                    sim[s], fp, fpn = getClosest(s, arg.fp, arg.th, fp=fp, fpn=fpn, marvin=arg.marvin)
+                    sim[s], fp, fpn = getClosest(s, arg.fp, arg.th, fp=fp, fpn=fpn, fpp=fpp, fpfun=fpfun, marvin=arg.marvin)
                 except:
                     continue
         for p in rTarget[r][1]:
             if p not in sim:
                 try:
-                    sim[p], fp, fpn = getClosest(p, arg.fp, arg.th, fp=fp, fpn=fpn, marvin=arg.marvin)
+                    sim[p], fp, fpn = getClosest(p, arg.fp, arg.th, fp=fp, fpn=fpn, fpp=fpp, fpfun=fpfun, marvin=arg.marvin)
                 except:
                     continue
     # Get reaction similarities
@@ -239,7 +246,10 @@ def run(arg, pc):
 def arguments(args=None):
     parser = argparse.ArgumentParser(description='quickRSim Pablo Carbonell, SYNBIOCHEM, 2016')
     parser.add_argument('db', help='Metanetx reaction file')
-    parser.add_argument('fp', help='Babel fingerprint file for reactants')
+    parser.add_argument('fp', help='Fingerprint file for reactants')
+    parser.add_argument('-fpp', default=None, help='Parameter for fingerprint, i.e. diameter')
+    parser.add_argument('-bit', action='store_true',
+                        help='Fingerprint stored as bitstring (pattern, rdk)')
     parser.add_argument('-rxn', 
                         help='Input reaction rxn file')
     parser.add_argument('-rid', 

@@ -12,7 +12,9 @@ import csv
 import argparse
 import quickRsim
 import numpy as np
-from rdkit.Chem import AllChem, Draw
+from rdkit.Chem import AllChem, Draw, DataStructs
+from rdkit.Chem.rdMolDescriptors import GetMorganFingerprint, GetAtomPairFingerprint, GetTopologicalTorsionFingerprint
+from rdkit.Chem.rdmolops import PatternFingerprint, RDKFingerprint
 
 class preLoad(object):
     """ Container of precomputed data """
@@ -27,10 +29,17 @@ class preLoad(object):
         self.fulldescriptions = fulldescriptions
         self.osource = osource
 
-    def fp(self, datadir, fpfile):
-        data = np.load(os.path.join(datadir, fpfile))
+    def fp(self, datadir, fpid):
+        fp = fingerprint(fpid)
+        fpfile = os.path.join(datadir, fp[0]+'.npz')
+        data = np.load(fpfile)
         self.fp = data['x']
         self.fpn = data['y']
+        self.fpparam = fp[1]
+        # Some fingerprints are stored as bit strings
+        if fp[2] == True:
+            self.fp = [DataStructs.CreateFromBitString(z) for z in self.fp]
+        self.fpfun = fp[3]
         data.close()
 
     def seqData(self, datadir, fl):
@@ -57,11 +66,11 @@ class preLoad(object):
             if os.path.exists(smiFile):
                 self.smir = reactionSmiles(smiFile)
 
-def readData(datadir):
+def readData(datadir, fp):
     """ Read all data into memory """
     pc = preLoad()
     pc.fasta(datadir, 'seqs.fasta')
-    pc.fp(datadir, 'mgfp.npz')
+    pc.fp(datadir, fp)
     pc.seqData(datadir, ['reac_seqs.tsv', 'upclst.json', 'clstrep.json', "seq_org.tsv", "org_lineage.csv"])
     pc.reacData(datadir, 'reac_smi.csv')
     return pc
@@ -232,9 +241,10 @@ def readRxnCons(consensus):
         
     return (MnxDir)   
     
-def getMnxSim(rxnInput, datadir, outdir, drxn=0, pc=None):
+def getMnxSim(rxnInput, datadir, outdir, drxn=0, fp='Morgan5', pc=None):
     """ Commmand line arguments of quickRsim """
-    args = [os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'mgfp.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
+
+    args = [os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'mgfp5.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
     quickRsim.run( quickRsim.arguments(args), pc )
     MnxSim = {}
     MnxDirPref = readRxnCons(os.path.join(datadir, "rxn_consensus_20160612.txt"))
@@ -571,8 +581,18 @@ def sequence_properties(fastaShortNameFile):
 def conservation_properties(fastaFile):
     cons = doMSA(fastaFile,  os.path.dirname(fastaFile))
     return cons
+
+def fingerprint(fp):
+    fpd = {'Morgan1': ('mgfp1', 1, False, GetMorganFingerprint), 'Morgan2': ('mgfp2', 2, False, GetMorganFingerprint),
+           'Morgan3': ('mgfp3', 3, False, GetMorganFingerprint), 'Morgan4': ('mgfp4', 4, False, GetMorganFingerprint), 
+           'Morgan5': ('mgfp5', 5, False, GetMorganFingerprint), 'Morgan6': ('mgfp6', 6, False, GetMorganFingerprint),
+           'Morgan7': ('mgfp4', 7, False, GetMorganFingerprint), 'Morgan8': ('mgfp5', 8, False, GetMorganFingerprint),
+           'Morgan9': ('mgfp4', 9, False, GetMorganFingerprint), 'Morgan10': ('mgfp5', 10, False, GetMorganFingerprint),
+           'Pattern': ('ptfp', None, True, PatternFingerprint), 'RDK': ('rdkfp', None, True, RDKFingerprint),
+           'AtomPair': ('apfp', None, False, GetAtomPairFingerprint), 'TopologicalTorsion': ('ttfp', None, False, GetTopologicalTorsionFingerprint)}
+    return fpd[fp]
     
-def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None):
+def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None, fp='Morgan5'):
     
 
     datadir = os.path.join(datadir)
@@ -587,11 +607,11 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
         csvfilename = "results_selenzy.csv"
     print ("Acquiring databases...")
     if pc is None:
-        pc = readData(datadir)    
+        pc = readData(datadir, fp)    
     
     print ("Running quickRsim...")
     try:
-        (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, datadir, outdir, pdir, pc)
+        (MnxSim, MnxDirPref, MnxDirUsed, Smiles, EcNumber) = getMnxSim(rxnInput, datadir, outdir, pdir, fp, pc)
     except:
         return False, pc
 
