@@ -77,7 +77,7 @@ def reset_session():
     app.logger.info( 'New session: %s' % (uniqueid,) )
     session['uniqueid'] = uniqueid
 
-def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
+def run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA):
     uniqueid = session['uniqueid']
     uniquefolder = session['uniquefolder']
     csvfile = "selenzy_results.csv"
@@ -89,7 +89,7 @@ def run_session(rxntype, rxninfo, targets, direction, host, noMSA):
                                                     csvfile,
                                                     pdir = int(direction),
                                                     host = host,
-                                                    fp = 'Morgan10',
+                                                    fp = fp,
                                                     NoMSA = noMSA,
                                                     pc = app.config['TABLES']
     ) # this creates CSV file in Uploads directory
@@ -167,9 +167,20 @@ class RestQuery(Resource):
                 host = args['host']
             else:
                 host = '83333'
+            if 'fp' in args:
+                fp = args['fp']
+            else:
+                fp = 'RDK'
             init_session()
             try:
-                data, csvfile, session = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
+                if isinstance(rxninfo, (list, tuple) ):
+                    data = []
+                    for instance in rnxinfo:
+                        dat, csvfile, session = run_session(rxntype, instance, targets, direction, host, fp, noMSA)
+                        data.append(dat)
+                    data = pd.DataFrame(data)
+                else:
+                    data, csvfile, session = run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA)
                 return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': data.to_json()})
             except:
                 return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': None})
@@ -182,12 +193,19 @@ class RestSource(Resource):
             orgs[app.config['ORG'][seq][1]] = app.config['ORG'][seq][0]
         return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': orgs})
 
+class RestFinger(Resource):
+    """ REST interface, returns api info """
+    def get(self):
+        fp = Selenzy.availableFingerprints()
+        return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': list(fp)})
+
 
 api.add_resource(RestGate, '/REST')
 
 api.add_resource(RestQuery, '/REST/Query')
 
 api.add_resource(RestSource, '/REST/Source')
+api.add_resource(RestFinger, '/REST/Fingerprints')
 
 
 @app.errorhandler(404)
@@ -198,7 +216,7 @@ def page_not_found(e):
 def upload_form():
     if 'username' not in session:
         return redirect(url_for('login'))
-    return render_template("my_form.html", username=session['username'])
+    return render_template("my_form.html", username=session['username'], fingerprints=Selenzy.availableFingerprints())
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -357,7 +375,7 @@ def add_rows():
 def delete_rows():
     """ Sorts table """
     if request.method == 'POST':
-        selrows = json.loads(request.values.get('filter'))
+        filter = json.loads(request.values.get('filter'))
         session = json.loads(request.values.get('session'))
         csvname = os.path.basename(json.loads(request.values.get('csv')))
         outdir = os.path.join(app.config['UPLOAD_FOLDER'], session)
@@ -397,6 +415,21 @@ def delete_rows():
         return json.dumps( {'data': {'csv':  data.to_html()}} )
                           
 
+@app.route('/scorer', methods=['POST'])
+def score_table():
+    """ Score table """
+    if request.method == 'POST':
+        score = json.loads(request.values.get('score'))
+        session = json.loads(request.values.get('session'))
+        csvname = os.path.basename(json.loads(request.values.get('csv')))
+        csvfile = os.path.join(app.config['UPLOAD_FOLDER'], session, csvname)
+        head, rows = Selenzy.read_csv(csvfile)
+        data = pd.read_csv(csvfile)
+        data.index = data.index + 1
+        app.config['SCORE'] = Selenzy.seqScore(score)
+        data = Selenzy.updateScore(data, app.config['SCORE'])
+        data.rename_axis('Select', axis="columns")
+        return json.dumps( {'data': {'csv':  data.to_html()}} )
 
 @app.route('/debug', methods=['GET'])
 def show_table():
@@ -404,9 +437,11 @@ def show_table():
         csvfile = os.path.join(app.config['UPLOAD_FOLDER'], 'debug', 'selenzy_results.csv')
         data = pd.read_csv(csvfile)
         data.index = data.index + 1
+        data = Selenzy.updateScore(data, app.config['SCORE'])
         sessionid = 'debug'
         data.rename_axis('Select', axis="columns")
-        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False})
+        return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid,
+                               flags={'fasta': False, 'msa': False}, score=app.config['SCORE'])
     else:
         return redirect ( url_for('upload_form') )
 
@@ -423,7 +458,7 @@ def upload_file():
                 flash("No file selected")
                 return redirect (request.url)
             data, csvfile, sessionid = retrieve_session(fileinfo)
-            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False})
+            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False}, score=app.config['SCORE'])
         else:
             try:
                 rxninfo = session['rxninfo']
@@ -435,13 +470,14 @@ def upload_file():
         noMSA = False
         targets = request.form['targets']
         host = request.form['host']
+        fp = request.form['finger']
         if request.form.get('direction'):
             direction = 1
         if request.form.get('noMSA'):
             noMSA = True
         try:
-            data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
+            data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA)
+            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA}, score=app.config['SCORE'])
         except:
             return redirect( url_for("upload_form") )
     elif request.method == 'GET':
@@ -456,8 +492,11 @@ def upload_file():
             if smarts is None:
                 return redirect( url_for("upload_form") )
             host = request.args.get('host')
-            if smarts is None:
+            if host is None:
                 host = '83333'
+            fp = request.args.get('fp')
+            if fp is None:
+                fp = 'RDK'
             rxntype = 'smarts'
             rxninfo = smarts
             direction = 0
@@ -466,8 +505,9 @@ def upload_file():
             session['rxninfo'] = rxninfo
             session['rxntype'] = rxntype
             try:
-                data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, noMSA)
-                return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA})
+                data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA)
+                return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid,
+                                       flags={'fasta': True, 'msa': not noMSA}, score=app.config['SCORE'])
             except:
                 return redirect( url_for("upload_form") )
     return redirect( url_for("upload_form") )
@@ -485,8 +525,7 @@ if __name__== "__main__":  #only run server if file is called directly
     app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.uploaddir)
     app.config['LOG_FOLDER'] = os.path.abspath(arg.logdir)
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
-
-
+    app.config['SCORE'] = Selenzy.seqScore()
 
     if arg.d:
         app.config['DEBUG'] = True

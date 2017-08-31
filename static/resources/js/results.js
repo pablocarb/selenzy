@@ -147,6 +147,32 @@ function deleteRows() {
     });
 }
 
+function updateScore() {
+    // Update score
+    $.ajax({	
+	data : {
+	    score : JSON.stringify(readScore().score),
+	    csv : JSON.stringify(csvlink),
+	    session: JSON.stringify(sessionid),
+	    event: JSON.stringify(event.timeStamp)
+	},
+	type : 'POST',
+	url : '/scorer',
+	success : function(serverdata) {
+	    data = JSON.parse(serverdata);
+	    $('.Selenzy').replaceWith(data.data.csv);
+	    // Avoid propagation of the click event
+	    $( '.Remove').off("click");
+	    formatTable();
+
+	},
+	error : function() {
+	    console.log('Sorry, no luck');
+	}
+    });
+}
+
+
 function selectedRows() {
     // Returns an array with the indices of selected rows
     var index = [];
@@ -318,6 +344,61 @@ function addSelection() {
     lastSelection = 0;
 }
 
+function readScore() {
+    score = [];
+    equation = "<b>Score</b> = ";
+    head = true;
+    $('.score li').each( function(index, value) {
+		if ($( this ).children('.sccheck')[0].checked == true) {
+		    val = parseFloat($( this ).children('.scval')[0].value);
+		    coln = $( this ).children('.scval').attr('colname');
+		    if (val != 0) {
+			if (val > 0 ) {
+			    equation += '+' ;
+			}
+			equation +=  val;
+			equation +=  ' <b>' + coln + '</b> ';
+			}
+		    score.push( [coln, val] );
+		}
+	    });
+   return {equation: equation, score: score} ;
+}
+
+function initScore() {
+	    $('.score').dialog({
+		title: 'Sequence score',
+		width: 600,
+		height: 400,
+	    });
+	    
+	    $('.score li').each( function(index, value) {
+		if ($( this ).children('.sccheck')[0].checked == false) {
+		    $( this ).children('.scval').attr('disabled', 'disabled');
+		}
+	    });
+
+	    $('.score :checkbox').change( function() {
+		if ($(this)[0].checked == true) {
+		    $(this).parent().children('.scval').removeAttr('disabled', 'disabled');
+		    } else {
+		    $(this).parent().children('.scval').attr('disabled', 'disabled');
+		    }
+		$('.equation').html( readScore().equation );
+		});
+
+	    $(".score input[type='number']").bind('click keyup', function() {
+		$('.equation').html( readScore().equation );
+		});
+
+
+	    $('.equation').html( readScore().equation );
+
+    $( '.updatescore').click( function(event) {
+	updateScore();
+    });
+
+}
 
 // Main jQuery call
 $(document)
@@ -326,6 +407,8 @@ $(document)
 	    addNavigation();
 
 	    formatTable();
+
+	    initScore();
 
 	    // selectors = addFilter(3);
 	    // $('.prior').selectmenu({

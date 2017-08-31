@@ -61,6 +61,11 @@ Selenzy: Enzyme Selection Tool</h1>
 		  <option value="83333">Escherichia coli K-12</option>
 		  <option value="4932">Saccharomyces cerevisiae</option>
 		  </select>
+		Fingerprint: <select name="finger" id="finger">
+		  {% for item in fingerprints %}
+		  <option value="{{ item }}">{{ item }}</option>
+		  {% endfor %}
+		  </select>
 		<input type="submit" value="Submit" id="upload" disabled="disabled" />
 	  </div>
 	  <div class="Info2"> 

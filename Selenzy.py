@@ -12,9 +12,8 @@ import csv
 import argparse
 import quickRsim
 import numpy as np
-from rdkit.Chem import AllChem, Draw, DataStructs
-from rdkit.Chem.rdMolDescriptors import GetMorganFingerprint, GetAtomPairFingerprint, GetTopologicalTorsionFingerprint
-from rdkit.Chem.rdmolops import PatternFingerprint, RDKFingerprint
+import pandas as pd
+from rdkit.Chem import AllChem, Draw
 
 class preLoad(object):
     """ Container of precomputed data """
@@ -29,18 +28,10 @@ class preLoad(object):
         self.fulldescriptions = fulldescriptions
         self.osource = osource
 
-    def fp(self, datadir, fpid):
-        fp = fingerprint(fpid)
-        fpfile = os.path.join(datadir, fp[0]+'.npz')
-        data = np.load(fpfile)
-        self.fp = data['x']
-        self.fpn = data['y']
-        self.fpparam = fp[1]
-        # Some fingerprints are stored as bit strings
-        if fp[2] == True:
-            self.fp = [DataStructs.CreateFromBitString(z) for z in self.fp]
-        self.fpfun = fp[3]
-        data.close()
+    def fpData(self, datadir):
+        self.fp = {}
+        for fpid in quickRsim.fingerprint():
+            self.fp[fpid] = quickRsim.loadFingerprint(datadir, fpid)
 
     def seqData(self, datadir, fl):
         with open(os.path.join(datadir, fl[0])) as f:
@@ -66,15 +57,18 @@ class preLoad(object):
             if os.path.exists(smiFile):
                 self.smir = reactionSmiles(smiFile)
 
-def readData(datadir, fp):
+def readData(datadir):
     """ Read all data into memory """
     pc = preLoad()
     pc.fasta(datadir, 'seqs.fasta')
-    pc.fp(datadir, fp)
+    pc.fpData(datadir)
     pc.seqData(datadir, ['reac_seqs.tsv', 'upclst.json', 'clstrep.json', "seq_org.tsv", "org_lineage.csv"])
     pc.reacData(datadir, 'reac_smi.csv')
     return pc
 
+def availableFingerprints():
+    fp = quickRsim.fingerprint()
+    return sorted(fp, key=lambda x: fp[x][4])
 
 def sanitizeRxn(rxninfo, outrxn):
     """ It works both with the smiles string or a rxn file """
@@ -174,6 +168,56 @@ def taxDistance(tax, host, target):
     else:
         return '-'
 
+def seqScore(newscore=None):
+    import string
+    # Initial score
+    vdict = {
+        string.ascii_uppercase[10]: ('Reaction similarity:', 100.0, True),
+        string.ascii_uppercase[9]: ('Sequence conservation:', 50.0, False),
+        string.ascii_uppercase[4]: ('Sequence taxonomic distance:', -20.0, False),
+        string.ascii_uppercase[13]: ('Percentage helices:', 0.0, False),
+        string.ascii_uppercase[14]: ('Percentage sheets:', 0.0, False),
+        string.ascii_uppercase[15]: ('Percentage turns:', 0.0, False),
+        string.ascii_uppercase[16]: ('Molecular weight:', 0.0, False),
+        string.ascii_uppercase[17]: ('Isoelectric point:', 0.0, False),
+        string.ascii_uppercase[18]: ('Percentage polar amino acids:', 0.0, False)
+    }
+    # Reference order (alternatively, perhaps easier to keep table order)
+    clist = [string.ascii_uppercase[x] for x in [10, 9, 4, 13, 14, 15, 16, 17, 18]]
+    # Update score if given
+    if newscore is not None:
+        for val in newscore:
+            if val[0] in vdict:
+                vdict[val[0]] = (vdict[val[0]][0], val[1], True)
+    score = []
+    for x in clist:
+        score.append( (x,) + vdict[x] )
+    return score
+
+def updateScore(data, score):
+    """ Add or update score column and reorder """
+    import string
+    cols = data.columns.tolist()
+    sco = pd.Series(np.zeros(len(data[cols[0]])), index=data.index)
+    if 'Score' not in cols:
+        data['Score'] = sco
+        cols = ['Score'] + cols
+        data = data[cols]
+    colk = list(string.ascii_uppercase)
+    for sc in score:
+        try:
+            coln = colk.index(sc[0])
+            val = sc[2]
+            checked = sc[3]
+            if checked:
+                sco += val * data.iloc[:,coln]
+        except:
+            continue
+    data['Score'] = sco
+    data.sort_values('Score', ascending=False)
+    return data
+
+
 def readFasta(datadir, fileFasta, limit=None):
     
     from Bio import SeqIO
@@ -241,10 +285,10 @@ def readRxnCons(consensus):
         
     return (MnxDir)   
     
-def getMnxSim(rxnInput, datadir, outdir, drxn=0, fp='Morgan5', pc=None):
+def getMnxSim(rxnInput, datadir, outdir, drxn=0, fp='RDK', pc=None):
     """ Commmand line arguments of quickRsim """
 
-    args = [os.path.join(datadir,'reac_prop.tsv'), os.path.join(datadir,'mgfp5.npz')] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
+    args = [datadir, fp] + rxnInput + ['-out', os.path.join(outdir,'results_quickRsim.txt')]
     quickRsim.run( quickRsim.arguments(args), pc )
     MnxSim = {}
     MnxDirPref = readRxnCons(os.path.join(datadir, "rxn_consensus_20160612.txt"))
@@ -582,17 +626,7 @@ def conservation_properties(fastaFile):
     cons = doMSA(fastaFile,  os.path.dirname(fastaFile))
     return cons
 
-def fingerprint(fp):
-    fpd = {'Morgan1': ('mgfp1', 1, False, GetMorganFingerprint), 'Morgan2': ('mgfp2', 2, False, GetMorganFingerprint),
-           'Morgan3': ('mgfp3', 3, False, GetMorganFingerprint), 'Morgan4': ('mgfp4', 4, False, GetMorganFingerprint), 
-           'Morgan5': ('mgfp5', 5, False, GetMorganFingerprint), 'Morgan6': ('mgfp6', 6, False, GetMorganFingerprint),
-           'Morgan7': ('mgfp4', 7, False, GetMorganFingerprint), 'Morgan8': ('mgfp5', 8, False, GetMorganFingerprint),
-           'Morgan9': ('mgfp4', 9, False, GetMorganFingerprint), 'Morgan10': ('mgfp5', 10, False, GetMorganFingerprint),
-           'Pattern': ('ptfp', None, True, PatternFingerprint), 'RDK': ('rdkfp', None, True, RDKFingerprint),
-           'AtomPair': ('apfp', None, False, GetAtomPairFingerprint), 'TopologicalTorsion': ('ttfp', None, False, GetTopologicalTorsionFingerprint)}
-    return fpd[fp]
-    
-def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None, fp='Morgan5'):
+def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', NoMSA=False, pc=None, fp='RDK'):
     
 
     datadir = os.path.join(datadir)
@@ -607,7 +641,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
         csvfilename = "results_selenzy.csv"
     print ("Acquiring databases...")
     if pc is None:
-        pc = readData(datadir, fp)    
+        pc = readData(datadir)    
     
     print ("Running quickRsim...")
     try:

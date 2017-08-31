@@ -18,6 +18,19 @@ function listOrganisms() {
     });
 }
 
+function listFingerprints() {
+    $.ajax({
+	url: "/REST/Fingerprints"
+    }).then( function(data) {
+	var width = $('#finger').width();
+	$.each(data.data, function(key, value) {
+	    $('#finger')
+		.append($('<option>').attr('value', value).text(value));
+	    });
+//	$('#host').css('width', width);
+    });
+}
+
 function displayReaction(rxninfo) {
     // display reaction
     toggleVisibility( $('.Info1') );
@@ -80,6 +93,7 @@ $(document)
 	    rxnIO();
 	    smartsIO();
 	    listOrganisms();
+//	    listFingerprints();
 	    $('#options').submit(
 		function( event ) {
 		    toggleVisibility( $('.Info2') );

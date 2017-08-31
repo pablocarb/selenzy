@@ -24,8 +24,30 @@ from rdkit.Chem import rdChemReactions
 import math
 import numpy as np
 from rdkit import DataStructs, Chem
-from rdkit.Chem.rdMolDescriptors import GetMorganFingerprint, GetConnectivityInvariants
+from rdkit.Chem.rdMolDescriptors import GetMorganFingerprint, GetAtomPairFingerprint, GetTopologicalTorsionFingerprint
+from rdkit.Chem.rdmolops import PatternFingerprint, RDKFingerprint
 from rdkit.Chem import AllChem
+
+
+def fingerprint():
+    """ I keep the three fingerprints that give better results in the tests """
+    fpd =  {'Pattern': ('ptfp', None, True, PatternFingerprint, 2), 'RDK': ('rdkfp', None, True, RDKFingerprint, 1),
+            'Morgan' : ('mgfp5', 5, False, GetMorganFingerprint, 3)}
+    return fpd
+
+def loadFingerprint(datadir, fpid):
+    fpi = fingerprint()[fpid]
+    fpfile = os.path.join(datadir, fpi[0]+'.npz')
+    data = np.load(fpfile)
+    fp = data['x']
+    fpn = data['y']
+    fpparam = fpi[1]
+    # Some fingerprints are stored as bit strings
+    if fpi[2] == True:
+        fp = [DataStructs.CreateFromBitString(z) for z in fp]
+    fpfun = fpi[3]
+    data.close()
+    return fp, fpn, fpparam, fpfun
 
 
 def storeReaction(smi, rfile):
@@ -90,7 +112,10 @@ def getClosest(smi, fpfile, th=0.8, fp=None, fpn=None, fpp=None, fpfun=None, mar
             targetMol = Chem.MolFromSmiles(out)
         except:
             pass
-    targetFp = fpfun(targetMol, fpp)
+    if fpp is not None:
+        targetFp = fpfun(targetMol, fpp)
+    else:
+        targetFp = fpfun(targetMol)
     tn = DataStructs.BulkTanimotoSimilarity(targetFp, list(fp))
     for i in sorted(range(0, len(tn))):
         dist[fpn[i]] = tn[i]
@@ -177,7 +202,7 @@ def run(arg, pc):
         fileObj = open(arg.out, 'w')    
     if arg.high:
         fileObj = open(arg.high, 'w')
-    rsp = reacSubsProds(arg.db)
+    rsp = reacSubsProds(os.path.join(arg.datadir, 'reac_prop.tsv'))
     smiles = ''
     if arg.rxn is not None:
         rTarget, smiles = getReaction(arg.rxn)
@@ -196,20 +221,14 @@ def run(arg, pc):
                     rTarget[arg.rid][side][struct[s]] = rsp[arg.rid][side][s]
     else:
         raise Exception('No target')
-    sim = {}
-
     # Compute similarities for new reactants
-    if pc is not None:
-        fp = pc.fp
-        fpn = pc.fpn
-        fpp = pc.fpparam
-        fpfun = pc.fpfun
+    sim = {}
+    # Read fingerprint info from preload data if available
+    if pc is not None and arg.fp in pc.fp:
+        fp, fpn, fpp, fpfun = pc.fp[arg.fp]
     else:
-        fp = None
-        fpn = None
-        fpp = None
-        fpfun = None
-        # To do: share fingerprint info into quickRsim...
+        fp, fpn, fpp, fpfun = loadFingerprint(arg.datadir, arg.fp)
+
     for r in rTarget:
         for s in rTarget[r][0]:
             if s not in sim:
@@ -245,11 +264,8 @@ def run(arg, pc):
 
 def arguments(args=None):
     parser = argparse.ArgumentParser(description='quickRSim Pablo Carbonell, SYNBIOCHEM, 2016')
-    parser.add_argument('db', help='Metanetx reaction file')
-    parser.add_argument('fp', help='Fingerprint file for reactants')
-    parser.add_argument('-fpp', default=None, help='Parameter for fingerprint, i.e. diameter')
-    parser.add_argument('-bit', action='store_true',
-                        help='Fingerprint stored as bitstring (pattern, rdk)')
+    parser.add_argument('datadir', help='Data folder')
+    parser.add_argument('fp', help='Fingerprint for reactants')
     parser.add_argument('-rxn', 
                         help='Input reaction rxn file')
     parser.add_argument('-rid', 

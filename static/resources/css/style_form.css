@@ -29,6 +29,12 @@ h1              { border-bottom: 2px solid #eee; }
 #host option {
     width: 200px;
 }
+#finger {
+    width: 100px;
+}
+#finger option {
+    width: 100px;
+}
 .info {
     width: 600px;
     max-wdith: 600px;

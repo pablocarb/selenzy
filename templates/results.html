@@ -13,7 +13,7 @@
   <h1>Results</h1>
   <div class="Remove Selector"><a href="#">[Delete selected rows]</a></div>
   <div class="Navigate Selector"></div>
-<!--    <div class="Filter Selector"></div> -->
+<!--  <div class="Filter Selector"></div> -->
   <div class="Custom Selector">
     <center>
       <div class="labwrap">
@@ -34,7 +34,20 @@
     {{ tables|safe }}
 
 </div>
-
+<div class="score">
+<ul>
+{% for item in score %}
+<li>
+  <span class="sclabel"><b>{{item[0]}}.</b> {{item[1]}}</span>
+  <input type="number" value="{{item[2]}}" colname="{{item[0]}}" class="scval"></input>
+  <input type="checkbox" class="sccheck" {% if item[3] %} checked {% else %} {{ item[3] }} {% endif %}/>
+</li>
+{% endfor %}
+</ul>
+<div class="equation"></div>
+<div class="updatescore Selector"><a href="#">[Update score]</a></div>
+<div style="clear: both;"></div>
+</div>
 <script>
 var sessionid = "{{sessionid}}";
 var csvlink = "/results/{{sessionid}}/files/{{csvfile}}";

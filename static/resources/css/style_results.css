@@ -94,3 +94,26 @@ th.selected {
     cursor: pointer;
     vertical-align: middle;
 }
+.score li {
+    list-style-type: none;
+}
+.sclabel {
+    width: 300px;
+    text-align: left;
+    float: left;
+}
+.sccheck {
+   float: left;
+}
+.scval {
+    margin-left: 20px;
+    text-align: right;
+    width: 100px;
+    clear: both;
+}
+.scval[disabled] {
+    color: #DCDAD1;
+}
+.updatescore {
+    float: right;
+}
