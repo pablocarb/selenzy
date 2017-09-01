@@ -25,7 +25,6 @@ function formatTable(csvdata) {
     $('.Selenzy th').each( function(index, value) {
 	$( this ).addClass('active');
 	});
-
     addSorted();
     addLinks();
     addSelection();
@@ -46,24 +45,6 @@ function formatHeader(filt) {
     }
 }
 
-function addFilter(nFilters) {
-    var columns = [];
-    $('.dataframe thead th').each(
-			 function( index, value ) {
-			     columns.push(value.innerHTML);
-			 }
-
-	);
-    var selectors = []
-    for (i=0; i < nFilters; i++) {
-	selectors[i] = $('<select>' ).addClass('prior item').attr('id', 'sel'+parseInt(i));
-	for (x = 0; x < columns.length; x++) {
-	    selectors[i].append( $('<option>', {value:x, text:columns[x]}) );
-	}
-	$('.Filter').append(selectors[i]);
-    }
-    return selectors;
-}
 
 function sortTable(valueSelected) {
     // post and retrieve data from server to sort table
@@ -183,6 +164,18 @@ function selectedRows() {
 
 }
 
+function addColID() {
+       $('thead th').each(
+	   function( index, value) {
+	       if (index > 0) {
+		   var title = $( this ).html();
+		   $( this ).html( String.fromCharCode( 65 + index - 1) +". "+title );
+		  }
+	   }
+	   );
+}
+
+
 function addSorted() {
        $('thead th').each(
 	   function( index, value) {
@@ -228,15 +221,17 @@ function addNavigation() {
 
 
 function addLinks() {
+    var seqidix = 1;
+    var rxnidix = 5;
     var rows = document.getElementsByTagName('tr');
     for (var i = 1; i < rows.length; i++)	{
 
-	var seqID = rows[i].getElementsByTagName('td')[0];
-	var rxnID = rows[i].getElementsByTagName('td')[4];
+	var seqID = rows[i].getElementsByTagName('td')[seqidix];
+	var rxnID = rows[i].getElementsByTagName('td')[rxnidix];
 
-	var seqlink = "//www.uniprot.org/uniprot/" + rows[i].getElementsByTagName('td')[0].innerHTML;
+	var seqlink = "//www.uniprot.org/uniprot/" + rows[i].getElementsByTagName('td')[seqidix].innerHTML;
 
-	var rxnlink = "http://www.metanetx.org/cgi-bin/mnxweb/equa_info?equa=" + rows[i].getElementsByTagName('td')[4].innerHTML;
+	var rxnlink = "http://www.metanetx.org/cgi-bin/mnxweb/equa_info?equa=" + rows[i].getElementsByTagName('td')[rxnidix].innerHTML;
 
 	var aTag = document.createElement('a');
 	var bTag = document.createElement('a');
@@ -247,8 +242,8 @@ function addLinks() {
 	bTag.setAttribute('href', rxnlink);
 	bTag.setAttribute('target', '_blank');
 
-	aTag.innerHTML = rows[i].getElementsByTagName('td')[0].innerHTML;
-	bTag.innerHTML = rows[i].getElementsByTagName('td')[4].innerHTML;
+	aTag.innerHTML = rows[i].getElementsByTagName('td')[seqidix].innerHTML;
+	bTag.innerHTML = rows[i].getElementsByTagName('td')[rxnidix].innerHTML;
 
 	seqID.replaceChild(aTag, seqID.childNodes[0]);
 	rxnID.replaceChild(bTag, rxnID.childNodes[0]);
@@ -366,33 +361,36 @@ function readScore() {
 }
 
 function initScore() {
-	    $('.score').dialog({
+    $( '.Filter').click( function(event) {
+	$('.score').dialog({
 		title: 'Sequence score',
-		width: 600,
+	    width: 600,
 		height: 400,
-	    });
+	});
+    });
+
 	    
-	    $('.score li').each( function(index, value) {
-		if ($( this ).children('.sccheck')[0].checked == false) {
-		    $( this ).children('.scval').attr('disabled', 'disabled');
-		}
-	    });
+    $('.score li').each( function(index, value) {
+	if ($( this ).children('.sccheck')[0].checked == false) {
+	    $( this ).children('.scval').attr('disabled', 'disabled');
+	}
+    });
+    
+    $('.score :checkbox').change( function() {
+	if ($(this)[0].checked == true) {
+	    $(this).parent().children('.scval').removeAttr('disabled', 'disabled');
+	} else {
+	    $(this).parent().children('.scval').attr('disabled', 'disabled');
+	}
+	$('.equation').html( readScore().equation );
+    });
 
-	    $('.score :checkbox').change( function() {
-		if ($(this)[0].checked == true) {
-		    $(this).parent().children('.scval').removeAttr('disabled', 'disabled');
-		    } else {
-		    $(this).parent().children('.scval').attr('disabled', 'disabled');
-		    }
-		$('.equation').html( readScore().equation );
-		});
-
-	    $(".score input[type='number']").bind('click keyup', function() {
-		$('.equation').html( readScore().equation );
-		});
+    $(".score input[type='number']").bind('click keyup', function() {
+	$('.equation').html( readScore().equation );
+    });
 
 
-	    $('.equation').html( readScore().equation );
+    $('.equation').html( readScore().equation );
 
     $( '.updatescore').click( function(event) {
 	updateScore();
@@ -410,18 +408,6 @@ $(document)
 
 	    initScore();
 
-	    // selectors = addFilter(3);
-	    // $('.prior').selectmenu({
-	    // 	change: function(event) {
-	    // 	    var optionsFilter = [];
-	    // 	    for (i=0; i < selectors.length; i++) {
-	    // 		var optionSelected = $("option:selected", selectors[i][0]);
-	    // 		var valueSelected = selectors[i][0].value;
-	    // 		optionsFilter[i] = valueSelected;
-	    // 	    }
-	    // 	    sortTable(optionsFilter);
-	    // 	    }
-	    // 	});
 
 
 	}

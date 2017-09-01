@@ -94,9 +94,7 @@ def run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA):
                                                     pc = app.config['TABLES']
     ) # this creates CSV file in Uploads directory
     if success:
-        data = pd.read_csv(file_path(uniqueid, csvfile))
-        data.index = data.index + 1
-        data.rename_axis('Select', axis="columns")
+        data = Selenzy.updateScore(file_path(uniqueid, csvfile), app.config['SCORE'])
         return data, csvfile, uniqueid
 
     
@@ -172,6 +170,8 @@ class RestQuery(Resource):
             else:
                 fp = 'RDK'
             init_session()
+            if 'score' in args:
+                app.config['SCORE'] = Selenzy.seqScore(args['score'])
             try:
                 if isinstance(rxninfo, (list, tuple) ):
                     data = []
@@ -423,21 +423,15 @@ def score_table():
         session = json.loads(request.values.get('session'))
         csvname = os.path.basename(json.loads(request.values.get('csv')))
         csvfile = os.path.join(app.config['UPLOAD_FOLDER'], session, csvname)
-        head, rows = Selenzy.read_csv(csvfile)
-        data = pd.read_csv(csvfile)
-        data.index = data.index + 1
         app.config['SCORE'] = Selenzy.seqScore(score)
-        data = Selenzy.updateScore(data, app.config['SCORE'])
-        data.rename_axis('Select', axis="columns")
+        data = Selenzy.updateScore(csvfile, app.config['SCORE'])
         return json.dumps( {'data': {'csv':  data.to_html()}} )
 
 @app.route('/debug', methods=['GET'])
 def show_table():
     if app.debug == True:
         csvfile = os.path.join(app.config['UPLOAD_FOLDER'], 'debug', 'selenzy_results.csv')
-        data = pd.read_csv(csvfile)
-        data.index = data.index + 1
-        data = Selenzy.updateScore(data, app.config['SCORE'])
+        data = Selenzy.updateScore(csvfile, app.config['SCORE'])
         sessionid = 'debug'
         data.rename_axis('Select', axis="columns")
         return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid,

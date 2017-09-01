@@ -184,19 +184,26 @@ def seqScore(newscore=None):
     }
     # Reference order (alternatively, perhaps easier to keep table order)
     clist = [string.ascii_uppercase[x] for x in [10, 9, 4, 13, 14, 15, 16, 17, 18]]
-    # Update score if given
+    # Update score if given and well-formed
     if newscore is not None:
         for val in newscore:
             if val[0] in vdict:
-                vdict[val[0]] = (vdict[val[0]][0], val[1], True)
+                try:
+                    newval = float(val[1])
+                    vdict[val[0]] = (vdict[val[0]][0], newval, True)
+                except:
+                    continue
     score = []
     for x in clist:
         score.append( (x,) + vdict[x] )
     return score
 
-def updateScore(data, score):
+def updateScore(csvfile, score):
     """ Add or update score column and reorder """
     import string
+    head, rows = read_csv(csvfile)
+    data = pd.read_csv(csvfile)
+    data.index = data.index + 1
     cols = data.columns.tolist()
     sco = pd.Series(np.zeros(len(data[cols[0]])), index=data.index)
     if 'Score' not in cols:
@@ -214,7 +221,9 @@ def updateScore(data, score):
         except:
             continue
     data['Score'] = sco
-    data.sort_values('Score', ascending=False)
+    data = data.sort_values('Score', ascending=False)
+    data.rename_axis('Select', axis="columns")
+    data.to_csv(csvfile, quoting=csv.QUOTE_ALL, index=False)
     return data
 
 
@@ -617,7 +626,7 @@ def extend_sequences(initialfastafile, fastafile, workfolder, noMSA):
     return csvfile
 
 def sequence_properties(fastaShortNameFile):
-    #analysis of FinalList of sequences
+    #analysis of final list of sequences
     (hydrop, weight, isoelec, polar) = pepstats(fastaShortNameFile, os.path.dirname(fastaShortNameFile))
     (helices, sheets, turns, coils) = garnier(fastaShortNameFile,  os.path.dirname(fastaShortNameFile))
     return hydrop, weight, isoelec, polar, helices, sheets, turns, coils

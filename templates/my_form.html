@@ -60,13 +60,14 @@ Selenzy: Enzyme Selection Tool</h1>
 		Host organism: <select name="host" id="host">
 		  <option value="83333">Escherichia coli K-12</option>
 		  <option value="4932">Saccharomyces cerevisiae</option>
-		  </select>
-		Fingerprint: <select name="finger" id="finger">
+		  </select><br/>
+		Reaction similarity: <select name="finger" id="finger">
 		  {% for item in fingerprints %}
 		  <option value="{{ item }}">{{ item }}</option>
 		  {% endfor %}
 		  </select>
-		<input type="submit" value="Submit" id="upload" disabled="disabled" />
+		<input type="submit" style="float:right;" value="Submit" id="upload" disabled="disabled" />
+		<div style="clear: both;"></div>
 	  </div>
 	  <div class="Info2"> 
 	    <center><img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/></center>
@@ -92,6 +93,7 @@ Selenzy: Enzyme Selection Tool</h1>
 		    <li> <b>Hits:</b> Number of hits to show.</li>
 		    <li> <b>MSA:</b> Perform multiple sequence alignment and compute conservation score.</li>
 		    <li> <b>Host organism:</b> Compute phylogenetic distance of source organisms to selected host.</li>
+		    <li> <b>Similarity:</b> Select method for reaction similarity (see about <a href="http://rdkit.readthedocs.io/en/latest/GettingStartedInPython.html" target="_blank">fingerprints</a>).</li>
 		    </ul>
 		  </ul>
 		  Contact: <a href="mailto:pablo.carbonell@manchester.ac.uk">Pablo Carbonell</a>, SYNBIOCHEM.
