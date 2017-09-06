@@ -6,6 +6,109 @@ from rdkit.Chem.rdmolops import PatternFingerprint, RDKFingerprint
 from rdkit import DataStructs
 from os import path
 import numpy as np
+import csv, sys
+
+
+def reactSMILES2FP(smi, smiles, fps, ffun, param):
+    """ Return left / right reaction fingerprint """
+    """ The reaction could be replaced by rdkit """
+    left, right = smi.split('>>')
+    rleft = left.split('.')
+    rright = right.split('.')
+    ok = True
+    mleft = []
+    mright = []
+    for c in rleft:
+        if c not in smiles:
+            try:
+                smiles[c] = Chem.MolFromSmiles(c)
+            except:
+                ok = False
+                break
+        mleft.append((c, smiles[c]))
+    if not ok:
+        return None
+    for c in rright:
+        if c not in smiles:
+            try:
+                smiles[c] = Chem.MolFromSmiles(c)
+            except:
+                ok = False
+                break
+        mright.append((c, smiles[c]))
+    if not ok:
+        return None
+    rfp = [None, None]
+    for c in mright:
+        if c[0] not in fps:
+            try:
+                if param is not None:
+                    if ffun == GetMorganFingerprint:
+                        fps[c[0]] = ffun(c[1], radius=param)
+                    elif ffun == RDKFingerprint:
+                        fps[c[0]] = ffun(c[1], maxPath=param)
+                    else:
+                        fps[c[0]] = ffun(c[1])
+                else:
+                    fps[c[0]] = ffun(c[1])
+            except:
+                ok = False
+                break
+        if rfp[1] is None:
+            rfp[1] = fps[c[0]]
+        else:
+            rfp[1] = rfp[1] | fps[c[0]]
+    if not ok or rfp[1] is None:
+        return None
+    for c in mleft:
+        if c[0] not in fps:
+            try:
+                if param is not None:
+                    if ffun == GetMorganFingerprint:
+                        fps[c[0]] = ffun(c[1], radius=param)
+                    elif ffun == RDKFingerprint:
+                        fps[c[0]] = ffun(c[1], maxPath=param)
+                    else:
+                        fps[c[0]] = ffun(c[1])
+                else:
+                    fps[c[0]] = ffun(c[1])
+            except:
+                ok = False
+                break
+        if rfp[0] is None:
+            rfp[0] = fps[c[0]]
+        else:
+            rfp[0] = rfp[0] | fps[c[0]]
+    if not ok or rfp[0] is None:
+        return None
+    return rfp
+
+
+
+def reactionFingerprint(ffun, fname, param=None, bit=False):
+    """ Reaction binary fingerprint based on prod-subs fingerprint logic difference """
+    """ rsmifile: precomputed reaction SMILES from METANETX2 """
+    csv.field_size_limit(sys.maxsize) # To avoid error with long csv fields
+    rsmiFile = path.join('../data', 'reac_smi.csv')
+    smiles = {}
+    fps = {}
+    rfp = {}
+    with open(rsmiFile) as f:
+        for row in csv.DictReader(f):
+            rid = row['RID']
+            smi = row['SMILES']
+            fp = reactSMILES2FP(smi, smiles, fps, ffun, param)
+            if fp is not None:
+                rfp[rid] = fp
+
+    fpNames = sorted(rfp)
+    if bit:
+        fp = [rfp[x].ToBitString() for x in fpNames]
+    else:
+        fp = [rfp[x] for x in fpNames]
+    f = np.savez_compressed(fname, x=fp, y=fpNames)
+    return rfp
+
 
 def getReactants(dbfile):
     clist = set()
@@ -73,6 +176,17 @@ def testPattern(ptfile, bit=False):
     sim = DataStructs.BulkTanimotoSimilarity(fp[0], list(fp))
     return fp
 
+
+print('Pattern fingerprint....')
+reactionFingerprint(PatternFingerprint, 'ptrfp.npz', bit=True)
+print('RDK fingerprint....')
+for radius in range(1,11):
+    reactionFingerprint(RDKFingerprint, 'rdkrfp%d.npz' % (radius,), param=radius, bit=True)
+print('Morgan fingerprint....')
+for radius in range(1,11):
+    reactionFingerprint(GetMorganFingerprint, 'mgrfp%d.npz' % (radius,), param=radius)
+
+sys.exit()
 
 mol = getMols()
 print('Pattern fingerprint....')
