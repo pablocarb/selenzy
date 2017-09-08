@@ -173,8 +173,8 @@ def seqScore(newscore=None):
     # Initial score
     vdict = {
         string.ascii_uppercase[10]: ('Reaction similarity:', 100.0, True),
-        string.ascii_uppercase[9]: ('Sequence conservation:', 50.0, False),
-        string.ascii_uppercase[4]: ('Sequence taxonomic distance:', -20.0, False),
+        string.ascii_uppercase[9]: ('Sequence conservation:', 1.0, True),
+        string.ascii_uppercase[4]: ('Sequence taxonomic distance:', -1.0, True),
         string.ascii_uppercase[13]: ('Percentage helices:', 0.0, False),
         string.ascii_uppercase[14]: ('Percentage sheets:', 0.0, False),
         string.ascii_uppercase[15]: ('Percentage turns:', 0.0, False),
@@ -182,20 +182,29 @@ def seqScore(newscore=None):
         string.ascii_uppercase[17]: ('Isoelectric point:', 0.0, False),
         string.ascii_uppercase[18]: ('Percentage polar amino acids:', 0.0, False)
     }
+    nvdict = vdict.copy()
     # Reference order (alternatively, perhaps easier to keep table order)
     clist = [string.ascii_uppercase[x] for x in [10, 9, 4, 13, 14, 15, 16, 17, 18]]
     # Update score if given and well-formed
+    update = False
     if newscore is not None:
-        for val in newscore:
-            if val[0] in vdict:
-                try:
-                    newval = float(val[1])
-                    vdict[val[0]] = (vdict[val[0]][0], newval, True)
-                except:
-                    continue
+        nscore = [x[0] for x in newscore]
+        if len( set(nscore) & set(clist) ) > 0:
+            for val in vdict:
+                nvdict[val] = (vdict[val][0], vdict[val][1], False)
+            for val in newscore:
+                if val[0] in nvdict:
+                    try:
+                        newval = float(val[1])
+                        nvdict[val[0]] = (nvdict[val[0]][0], newval, True)
+                        update = True
+                    except:
+                        continue
+    if not update:
+        nvdict = vdict
     score = []
     for x in clist:
-        score.append( (x,) + vdict[x] )
+        score.append( (x,) + nvdict[x] )
     return score
 
 def updateScore(csvfile, score):
@@ -222,6 +231,8 @@ def updateScore(csvfile, score):
             continue
     data['Score'] = sco
     data = data.sort_values('Score', ascending=False)
+    data = data.reset_index(drop=True)
+    data.index = data.index + 1
     data.rename_axis('Select', axis="columns")
     data.to_csv(csvfile, quoting=csv.QUOTE_ALL, index=False)
     return data

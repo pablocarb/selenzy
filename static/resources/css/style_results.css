@@ -94,6 +94,9 @@ th.selected {
     cursor: pointer;
     vertical-align: middle;
 }
+.score {
+    display: none;
+}
 .score li {
     list-style-type: none;
 }

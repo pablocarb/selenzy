@@ -362,6 +362,7 @@ function readScore() {
 
 function initScore() {
     $( '.Filter').click( function(event) {
+	$('.score').removeAttr('visibility');
 	$('.score').dialog({
 		title: 'Sequence score',
 	    width: 600,
@@ -391,6 +392,16 @@ function initScore() {
 
 
     $('.equation').html( readScore().equation );
+
+    $('.sccheck').click( function(event) {
+	var scolen = readScore().score.length;
+	var checkbox = $(this);
+	if ((scolen==0) & (!checkbox.is(":checked"))) {
+	    checkbox.attr("checked", true)
+	    event.preventDefault();
+	    return false;
+	}
+    });
 
     $( '.updatescore').click( function(event) {
 	updateScore();
