@@ -68,3 +68,9 @@ h1              { border-bottom: 2px solid #eee; }
 .status {
     color: red;
 }
+.example {
+    border-color: lightgray; 
+    border-style: hidden; 
+    border-width: 1px; 
+    font-size: 75%;
+}

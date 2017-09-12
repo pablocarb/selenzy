@@ -1,4 +1,5 @@
 function customConfirm( message, title ) {
+    console.log('here');
     if (!title ) 
 	title = 'Alert';
     if ( !message ) 
@@ -28,12 +29,16 @@ function formatTable(csvdata) {
     addSorted();
     addLinks();
     addSelection();
-    $( '.Remove' ).addClass('disabledbutton');
-    $( '.Remove').click( function(event) {
-	if (selectedRows().length > 0) {
-	    customConfirm('Do you want to remove permanently selected rows?');
-	  }
-    });
+    if (totalRows() == 0) {
+	// If no row is left, disable everything
+	$( '.Custom' ).addClass('disabledbutton');
+	$( '.Navigate' ).addClass('disabledbutton');
+	$( '.Filter' ).addClass('disabledbutton');
+    } else {
+	$( '.Custom' ).removeClass('disabledbutton');
+	$( '.Navigate' ).removeClass('disabledbutton');
+	$( '.Filter' ).removeClass('disabledbutton');
+    }
 }
 
 function formatHeader(filt) {
@@ -93,6 +98,8 @@ function addRows() {
 		    formatTable();
 		    $( '.labfile' ).text(mes);
 		    // Avoid propagation of the click event
+		    $( '#fasta' ).val('');
+		    $( '.Remove' ).addClass('disabledbutton');
 		},
 		error : function() {
 		    console.log('Sorry, no luck');
@@ -118,8 +125,8 @@ function deleteRows() {
 	    data = JSON.parse(serverdata);
 	    $('.Selenzy').replaceWith(data.data.csv);
 	    // Avoid propagation of the click event
-	    $( '.Remove').off("click");
 	    formatTable();
+	    $( '.Remove' ).addClass('disabledbutton');
 
 	},
 	error : function() {
@@ -143,7 +150,6 @@ function updateScore() {
 	    data = JSON.parse(serverdata);
 	    $('.Selenzy').replaceWith(data.data.csv);
 	    // Avoid propagation of the click event
-	    $( '.Remove').off("click");
 	    formatTable();
 
 	},
@@ -163,6 +169,12 @@ function selectedRows() {
     return(index);
 
 }
+
+function totalRows() {
+    // Count number of available rows
+    return( $( 'tbody th' ).length );
+}
+
 
 function addColID() {
        $('thead th').each(
@@ -217,6 +229,14 @@ function addNavigation() {
     $( '.Navigate' ).append(csvTag).append(fastaTag).append(msaTag).append(msaViewTag);
 
     addRows();
+    $( '.Remove' ).addClass('disabledbutton');
+    $( '.Remove').click( function(event) {
+	if (selectedRows().length > 0) {
+	    customConfirm('Do you want to remove permanently selected rows?');
+
+	  }
+    });
+
 }
 
 

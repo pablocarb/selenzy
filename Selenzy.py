@@ -3,7 +3,7 @@
 """
 Created on Tue Feb  7 10:53:03 2017
 
-@author: jerrywzy, Pablo CArbonell
+@author: jerrywzy, Pablo Carbonell
 """
 import re
 import os, subprocess
@@ -629,7 +629,7 @@ def extend_sequences(initialfastafile, fastafile, workfolder, noMSA):
         except:
             description = '-'
             source = '-'
-        row = [n, description, source, -1,
+        row = [0.0, n, description, source, -1,
                '-', '-', 0, n, conservation, 1, 1, 1,
                h, e, t, c, w, i, pol, '-', '-']
         rows.append( row )

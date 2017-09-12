@@ -364,6 +364,8 @@ def add_rows():
             else:
                 noMSA = True
             csvfile = Selenzy.extend_sequences('sequences.fasta', fastafile, uniquefolder, noMSA)
+            data = Selenzy.updateScore(file_path(uniquefolder, csvfile), app.config['SCORE'])
+
             data = pd.read_csv(csvfile)
             data.index = data.index + 1
             data.rename_axis('Select', axis="columns")
@@ -375,7 +377,7 @@ def add_rows():
 def delete_rows():
     """ Sorts table """
     if request.method == 'POST':
-        filter = json.loads(request.values.get('filter'))
+        selrows = json.loads(request.values.get('filter'))
         session = json.loads(request.values.get('session'))
         csvname = os.path.basename(json.loads(request.values.get('csv')))
         outdir = os.path.join(app.config['UPLOAD_FOLDER'], session)
@@ -392,7 +394,7 @@ def delete_rows():
         newrows = []
         for j in range(0, len(rows)):
             if j not in filt:
-                newtargets.append(rows[j][0])
+                newtargets.append(rows[j][head.index('Seq. ID')])
                 newrows.append(rows[j])
         fastaFile = os.path.join(outdir, "sequences.fasta")
         Selenzy.write_fasta(fastaFile, newtargets, app.config['TABLES'])
