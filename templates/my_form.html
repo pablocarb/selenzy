@@ -31,9 +31,29 @@ Selenzyme: Enzyme Selection Tool</h1>
 	<div class="reaction">
 	<form action="uploader" method="POST" enctype = "multipart/form-data" id="front">
 	  <div class="rquery">
+	    <div class="panel">
 	    Upload reaction [RXN, SMILES]: <input type="file" name="file" id="rxn" />
 	  <br/>
-	    Input reaction [SMILES, SMARTS]: <input type="text" name="smarts" id="smarts"/><br/>
+	    Input reaction [SMILES, SMARTS]: <input type="text" name="smarts" id="smarts"/>
+	  </div>
+	    <div class="panel">
+	    Select from database <select name="rdb" id="rbd">
+	      <option value="bigg">BiGG</option>
+	      <option value="biopath">BioPath</option>
+	      <option value="brenda">Brenda</option>
+	      <option value="ec" selected="selected">EC number</option>
+	      <option value="kegg">Kegg</option>
+	      <option value="metacyc">MetaCyc</option>
+	      <option value="mnx">MetaNetX</option>
+	      <option value="reactome">Reactome</option>
+	      <option value="rhea">Rhea</option>
+	      <option value="sabiork">Sabio-RK</option>
+	      <option value="seed">The Seed</option>
+	      <option value="upa">UniPathway</option>
+	    </select>
+	    Reaction id: <input type="text" name="rxnid" id="rxnid"/>
+	  <br/>
+	  </div>
 	  </div>
 	  <div class="Info1"> 
 	    <center><img src="{{url_for('static', filename='resources/gif/FhHRx.gif')}}"/> </center>
@@ -88,6 +108,19 @@ Selenzyme: Enzyme Selection Tool</h1>
 		    <li> Sketch the reaction using a chemical editor, copy it as SMILES and paste on the input box. <div>Example: <a href="https://en.wikipedia.org/wiki/Aspartate_transaminase">Aspartate aminotransferase (ATS), EC 2.6.6.1</a>. <div class="example"><tt>O=C([O-])CCC(=O)C(=O)[O-].NC(CC(=O)[O-])C(=O)O>>O=C([O-])CC(=O)C(=O)[O-].NC(CCC(=O)[O-])C(=O)O</tt></div></div>
 </li>
                      <li> Starting from a reaction in a database like <a href="http://www.genome.jp/kegg/">KEGG</a>, <a href="https://metacyc.org/">MetaCyc</a>, <a href="http://biochem4j.org">biochem4j</a>, <a href="http://www.brenda-enzymes.org/">Brenda</a>, etc, navigate to <a href="http://www.rhea-db.org/">Rhea</a>. Locate the <em>[Rhea ID]</em> of the reaction in the forward direction, download the corresponding RXN file in the following URL: <em>http://www.rhea-db.org/rest/1.0/ws/reaction/rxn/[Rhea ID]</em>.</li>
+		     <li> Select the reaction using an external database identifier: 
+		       <a href="http://bigg.ucsd.edu" target="_blank">BiGG</a>,
+		       <a href="http://www.molecular-networks.com/biopath" target="_blank">BioPath</a>,
+		       <a href="https://www.brenda-enzymes.org/" target="_blank">Brenda</a>,
+		       <a href="http://enzyme.expasy.org" target="_blank">EC number</a>,
+		       <a href="http://www.kegg.jp" target="_blank">Kegg</a>,		       
+		       <a href="http://metacyc.org" target="_blank">MetaCyc</a>,
+		       <a href="http://www.metanetx.org/" target="_blank">MetaNetX</a>,
+		       <a href="http://www.reactome.org" target="_blank">Reactome</a>,
+		       <a href="http://www.ebi.ac.uk/rhea/" target="_blank">Rhea</a>,
+		       <a href="http://sabio.h-its.org" target="_blank">Sabio-RK</a>,
+		       <a href="http://www.theseed.org" target="_blank">The SEED</a>,
+		       <a href="http://www.unipathway.org" target="_blank">UniPathway</a>.
 		    </ul>
 		  <li><b>Options:</b></li>
 		  <ul>

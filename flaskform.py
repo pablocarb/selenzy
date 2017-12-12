@@ -146,7 +146,25 @@ class RestQuery(Resource):
     We init an independent session for the REST request."""
     def post(self):
         args = request.json
+        if 'rxnid' in args and 'db' in args and 'smarts' not in args:
+            """ Retrieve the SMARTS from the database id """
+            db = args['db']
+            rxnid = db+':'+args['rxnid']
+            if rxnid in app.config['TABLES'].rxnref and app.config['TABLES'].rxnref[rxnid] in app.config['TABLES'].smir:
+                mnxrid = app.config['TABLES'].rxnref[rxnid]
+                smarts = app.config['TABLES'].smir[ mnxrid ][0]
+                if mnxrid in app.config['TABLES'].rxndir:
+                    if app.config['TABLES'].rxndir[mnxrid] == '-1':
+                        smarts = app.config['TABLES'].smir[ mnxrid ][1]
+                try:
+                    outname = file_path(session['uniqueid'], session['uniqueid'])
+                    rxninfo = Selenzy.sanitizeSmarts(smarts, outname)
+                    args['smarts'] = rxninfo
+                except:
+                    pass            
+
         if 'smarts' in args:
+            """ Submit SMARTS query """
             rxntype = 'smarts'
             rxninfo = args['smarts']
             if 'targets' in args:
@@ -184,6 +202,8 @@ class RestQuery(Resource):
                 return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': data.to_json()})
             except:
                 return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': None})
+        else:
+            return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': None})
 
 class RestSource(Resource):
     """ REST interface, returns api info """
@@ -286,12 +306,14 @@ def display_reaction(marvin=app.config['MARVIN']):
                 data = ''
             else:
                 if marvin:
-                    svgstream = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=True)
+                    svgstream = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'],
+                                                         outname = str(uuid.uuid4()), marvin=True)
                     data = svgstream.decode('utf-8')
                     if len(data) == 0:
                         success = False
                 else:
-                    outfile, size = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=False)
+                    outfile, size = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'],
+                                                             outname = str(uuid.uuid4()), marvin=False)
                     if len(outfile) == 0:
                         success = False
                     data = os.path.join('/results', session['uniqueid'], 'files', os.path.basename(outfile))
@@ -299,7 +321,7 @@ def display_reaction(marvin=app.config['MARVIN']):
                 session['rxntype'] = 'smarts'
                 session['status'] = True
                 success = True
-            return json.dumps( {'data': data, 'status': session['status'], 'success': success, 'svg': marvin, 'size': size} )
+            return json.dumps( {'data': data, 'status': session['status'], 'success': success, 'svg': marvin, 'size': size, 'smarts': rxninfo} )
         elif len(request.form['smarts']) > 0:
             outname = file_path(session['uniqueid'], session['uniqueid'])
             rxninfo = Selenzy.sanitizeSmarts(request.form['smarts'], outname)
@@ -317,8 +339,33 @@ def display_reaction(marvin=app.config['MARVIN']):
             session['rxninfo'] = rxninfo
             session['rxntype'] = 'smarts'
             session['status'] = True
-            return json.dumps( {'data': data, 'status': session['status'], 'success': success, 'svg': marvin, 'size': size} )
-
+            return json.dumps( {'data': data, 'status': session['status'], 'success': success, 'svg': marvin, 'size': size, 'smarts': rxninfo} )
+        elif len(request.form['rxnid']) > 0:
+            db = request.form['rdb']
+            rxnid = db+':'+request.form['rxnid']
+            if rxnid in app.config['TABLES'].rxnref and app.config['TABLES'].rxnref[rxnid] in app.config['TABLES'].smir:
+                mnxrid = app.config['TABLES'].rxnref[rxnid]
+                smarts = app.config['TABLES'].smir[ mnxrid ][0]
+                if mnxrid in app.config['TABLES'].rxndir:
+                    if app.config['TABLES'].rxndir[mnxrid] == '-1':
+                        smarts = app.config['TABLES'].smir[ mnxrid ][1]
+                outname = file_path(session['uniqueid'], session['uniqueid'])
+                rxninfo = Selenzy.sanitizeSmarts(smarts, outname)
+                success = True
+                if marvin:
+                    svgstream = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=True)
+                    data = svgstream.decode('utf-8')
+                    if len(data) == 0:
+                        success = False
+                else:
+                    outfile, size = Selenzy.display_reaction(rxninfo, outfolder=session['uniquefolder'], outname = str(uuid.uuid4()), marvin=False)
+                    if len(outfile) == 0:
+                        success = False
+                    data = os.path.join('/results', session['uniqueid'], 'files', os.path.basename(outfile))
+                session['rxninfo'] = rxninfo
+                session['rxntype'] = 'smarts'
+                session['status'] = True
+                return json.dumps( {'data': data, 'status': session['status'], 'success': success, 'svg': marvin, 'size': size, 'smarts':smarts} )
 
 @app.route('/sorter', methods=['POST'])
 def sort_table():
@@ -525,7 +572,7 @@ if __name__== "__main__":  #only run server if file is called directly
 
     if arg.d:
         app.config['DEBUG'] = True
-        app.config['PRELOAD'] = False
+        app.config['PRELOAD'] = True # False
     else:
         app.config['DEBUG'] = False
         app.config['PRELOAD'] = True        

@@ -52,10 +52,26 @@ class preLoad(object):
         self.tax = readTaxonomy(datadir, fl[4])
 
     def reacData(self, datadir, smf):
-            smiFile = os.path.join(datadir, smf)
-            self.smir = {}
-            if os.path.exists(smiFile):
-                self.smir = reactionSmiles(smiFile)
+        smiFile = os.path.join(datadir, smf[0])
+        rxnRefFile = os.path.join(datadir, smf[1])
+        rxnConsensus = os.path.join(datadir, smf[2])
+        rxnProp = os.path.join(datadir, smf[3])
+        rxnBrenda = os.path.join(datadir, smf[4])
+        rxnSabiork = os.path.join(datadir, smf[5])
+        self.smir = {}
+        if os.path.exists(smiFile):
+            self.smir = reactionSmiles(smiFile)
+        self.rxnref = {}
+        if os.path.exists(rxnRefFile):
+            self.rxnref = reactionXref(rxnRefFile, rxnBrenda, rxnSabiork)
+        self.rxndir = {}
+        if os.path.exists(rxnConsensus):
+            self.rxndir = readRxnCons(rxnConsensus)
+        self.ecrxn = {}
+        if os.path.exists(rxnProp):
+            self.ecrxn = readRxnProp(rxnProp)
+        self.ecsmi = ecSmiles(self.ecrxn, self.smir, self.rxnref)
+
 
 def readData(datadir):
     """ Read all data into memory """
@@ -63,7 +79,8 @@ def readData(datadir):
     pc.fasta(datadir, 'seqs.fasta')
     pc.fpData(datadir)
     pc.seqData(datadir, ['reac_seqs.tsv', 'upclst.json', 'clstrep.json', "seq_org.tsv", "org_lineage.csv"])
-    pc.reacData(datadir, 'reac_smi.csv')
+    pc.reacData(datadir, ['reac_smi.csv','reac_xref.tsv',"rxn_consensus_20160612.txt",
+                          'reac_prop.tsv', 'brenda-mnxref2.tsv', 'sabiork-mnxref2.tsv'])
     return pc
 
 def availableFingerprints():
@@ -377,6 +394,54 @@ def getMnxSim(rxnInput, datadir, outdir, drxn=0, fp='RDK', pc=None):
         fileout.close()              
         
         return (MnxSim, MnxDirPref, MnxDirUsed, SMILES, EcNumber)
+
+def readRxnProp(rxnprop):
+    ecrxn = {}
+    with open(rxnprop) as handler:
+        for line in handler:
+            if line.startswith('#'):
+                continue
+            row = line.rstrip().split('\t')
+            rxnid = row[0]
+            ec = row[4].split(';')
+            if len(ec) > 0:
+                for e in ec:
+                    if e == '':
+                        continue
+                    if e not in ecrxn:
+                        ecrxn[e] = set()
+                    ecrxn[e].add(rxnid)
+    return ecrxn
+
+def reactionXref(rxnRefFile, rxnBrenda, rxnSabiork):
+    rxnref = {}
+    for xref in (rxnRefFile, rxnBrenda, rxnSabiork):
+        with open(xref) as handler:
+            for line in handler:
+                if line.startswith('#'):
+                    continue
+                row = line.rstrip().split('\t')
+                rxnref[row[0]] = row[1]
+    return rxnref
+
+def ecSmiles(ecrxn, rsmi, rxnref):
+    smiec = {}
+    for ec in ecrxn:
+        for r in set(ecrxn[ec]) & set(rsmi):
+            s = rsmi[r][0]
+            if s not in smiec:
+                smiec[s] = set()
+            smiec[s].add(ec)
+    for ec in ecrxn:
+        """ Take the shortest SMARTS being unique for the EC class if possible """
+        hits = sorted(set(ecrxn[ec]) & set(rsmi), key=lambda x: len(rsmi[x][0]))
+        for h in hits:
+            if len(rsmi[h]) > 0:
+                rxnid = 'ec:'+ec
+                rxnref[rxnid] = h
+                if len(smiec[rsmi[h][0]]) == 1:
+                       break            
+
 
 def reactionSmiles(rxnSmilesFile):
     rsmi = {}

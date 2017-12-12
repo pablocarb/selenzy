@@ -41,6 +41,7 @@ function rxnIO() {
      $('#rxn').change( function() {
 	 if ($('#rxn').val() != '') {
 	     $('#smarts').val('');
+	     $('#rxnid').val('');
 	     displayReaction(this.value);
 	     }
      });
@@ -49,6 +50,16 @@ function rxnIO() {
 function smartsIO() {
     $('#smarts').change( function() {
 	if ($('#smarts').val() != '') {
+	    $('#rxn').val('');
+	    $('#rxnid').val('');
+	    displayReaction(this.value);
+	   }
+    });
+}
+
+function rxnrefIO() {
+    $('#rxnid').change( function() {
+	if ($('#rxnid').val() != '') {
 	    $('#rxn').val('');
 	    displayReaction(this.value);
 	   }
@@ -79,6 +90,7 @@ function resetForm( message ) {
     $('#upload').prop('disabled', true);
     $('#rxn').val('');
     $('#smarts').val('');
+    $('#rxnid').val('');
     if ( $('.canvas').hasClass('ui-dialog-content') ) {
 	$('.canvas').dialog('close');
     }
@@ -92,6 +104,7 @@ $(document)
 	function() {
 	    rxnIO();
 	    smartsIO();
+	    rxnrefIO();
 	    listOrganisms();
 //	    listFingerprints();
 	    $('#options').submit(
@@ -129,6 +142,7 @@ $(document)
 				    $('.canvas img').attr('width', $('.canvas').width() );
 				    }
 			    });
+			    $( '#smarts' ).val( data['smarts'] );
 			    $( '.status' ).css('color', 'green').html('Validated.');
 			} else {
 			    resetForm( 'Unknown reaction format!<br/>Supported formats: SMILES, SMARTS, MDL RXN.' );
