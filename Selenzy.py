@@ -36,12 +36,16 @@ class preLoad(object):
     def seqData(self, datadir, fl):
         with open(os.path.join(datadir, fl[0])) as f:
             self.MnxToUprot = {}
+            self.UprotToMnx = {}
             for row in f:
                 mnxr, db, seqid, source, ec = row.split('\t')
                 if db == 'uniprot':
                     if mnxr not in self.MnxToUprot:
                         self.MnxToUprot[mnxr] = set()
                     self.MnxToUprot[mnxr].add(seqid)
+                    if seqid not in self.UprotToMnx:
+                        self.UprotToMnx[seqid] = set()
+                    self.UprotToMnx[seqid].add(mnxr)
         
         with open(os.path.join(datadir, fl[1])) as f2:
             self.upclst = json.load(f2)
@@ -68,8 +72,9 @@ class preLoad(object):
         if os.path.exists(rxnConsensus):
             self.rxndir = readRxnCons(rxnConsensus)
         self.ecrxn = {}
+        self.rxnec = {}
         if os.path.exists(rxnProp):
-            self.ecrxn = readRxnProp(rxnProp)
+            self.ecrxn, self.rxnec = readRxnProp(rxnProp)
         self.ecsmi = ecSmiles(self.ecrxn, self.smir, self.rxnref)
 
 
@@ -248,6 +253,7 @@ def updateScore(csvfile, score):
             continue
     data['Score'] = sco
     data = data.sort_values('Score', ascending=False)
+    updateMSA(os.path.dirname(csvfile), [[v] for v in data['Seq. ID']])
     data = data.reset_index(drop=True)
     data.index = data.index + 1
     data.rename_axis('Select', axis="columns")
@@ -397,6 +403,7 @@ def getMnxSim(rxnInput, datadir, outdir, drxn=0, fp='RDK', pc=None):
 
 def readRxnProp(rxnprop):
     ecrxn = {}
+    rxnec = {}
     with open(rxnprop) as handler:
         for line in handler:
             if line.startswith('#'):
@@ -411,7 +418,10 @@ def readRxnProp(rxnprop):
                     if e not in ecrxn:
                         ecrxn[e] = set()
                     ecrxn[e].add(rxnid)
-    return ecrxn
+                    if rxnid not in rxnec:
+                        rxnec[rxnid] = set()
+                    rxnec[rxnid].add(e)
+    return ecrxn, rxnec
 
 def reactionXref(rxnRefFile, rxnBrenda, rxnSabiork):
     rxnref = {}
@@ -539,7 +549,39 @@ def garnier(file, outdir):
             coils[seq] = c
 
     return (helices, sheets, turns, coils)
-            
+
+def updateMSA(outdir, sortrows):
+    """ Update the fasta MSA file in the order of the scores """
+    align_fasta = os.path.join(outdir, "sequences_aln.fasta")
+    if not os.path.exists(align_fasta):
+        return
+    fasta = {}
+    with open(align_fasta) as handler:
+        for line in handler:
+            if line.startswith('>'):
+                splitdata = line.split()
+                upid = splitdata[0][1:]
+                if len(upid.split('|')) > 1:
+                    upid = upid.split('|')[1]
+                elif len(upid.split('_')) > 1:
+                    upid = upid.split('_')[0]
+            if upid not in fasta:
+                fasta[upid] = []
+            fasta[upid].append(line)
+
+    if len(fasta) == 0:
+        return
+    outfile = align_fasta
+    with open(outfile, 'w') as hw:
+        for row in sortrows:
+            try:
+                pid = row[0]
+                if pid in fasta:
+                    for seq in fasta[pid]:
+                        hw.write(seq)
+            except:
+                continue
+
 def doMSA(finallistfile, outdir):
     outfile = os.path.join(outdir, "sequences.score_ascii")
     outfile_html = os.path.join(outdir, "sequences.score_ascii.score_html")
@@ -557,17 +599,18 @@ def doMSA(finallistfile, outdir):
     f = open(outfile, "r")
 
     cons = {}
-    
     for line in f:
         if "   :  " in line:
             splitdata = line.split()
             upid = splitdata[0]
             if len(upid.split('|')) > 1:
                    upid = upid.split('|')[1]
+            elif len(upid.split('_')) > 1:
+                   upid = upid.split('_')[0]
             score = splitdata[2]
             cons[upid] = score
-            
-    return (cons)
+
+    return cons
 
 def read_csv(csvfile):
     rows = []
@@ -603,18 +646,44 @@ def sort_rows(rows, columns):
                     rows.sort(key = lambda x: x[key-1])
     return rows
 
-def write_fasta(fastaFile, targets, pc, short=False):
+def write_fasta(fastaFile, targets, pc, short=False, info=False, maxlength=25):
+    def shorten(s, maxlength=maxlength):
+        ns = re.sub('\s+', '_', s)
+        ns = re.sub('\|','_', ns)
+        if len(ns) > maxlength:
+            ns = ''.join(list(ns)[0:maxlength])+'...'
+        return ns
     with open(fastaFile, "w") as f:
         for t in targets:
             try: 
                 seq = pc.sequence[t]
-                if short:
+                if info:
+                    desc = ''
+                    try:
+                        desc = pc.descriptions[t]
+                    except:
+                        pass
+                    org = ''
+                    try:
+                        org = pc.seqorg[t][1]
+                    except:
+                        pass
+                    ecl = set()
+                    if t in pc.UprotToMnx:
+                        for r in pc.UprotToMnx[t]:
+                            if r in pc.rxnec:
+                                ecl |= pc.rxnec[r]
+                    ec = ';'.join( sorted(ecl) )
+                    st = '_'.join( [t, shorten(desc,30), shorten(org), ec] )
+                    print ('>{0} \n{1}'.format(st, seq), file=f)
+                elif short:
                     print ('>{0} \n{1}'.format(t, seq), file=f)
                 else:
                     fdesc = pc.fulldescriptions[t]
                     print ('>{0} \n{1}'.format(fdesc, seq), file=f)
             except KeyError:
                 pass
+
 def short_fasta(fastafile):
     dirname = os.path.dirname(fastafile)
     basename = os.path.basename(fastafile)
@@ -652,7 +721,7 @@ def extend_sequences(initialfastafile, fastafile, workfolder, noMSA):
         if not noMSA:
             cons = conservation_properties(os.path.join(workfolder, shortfile))
         else:
-            cons = {}
+            cons = ({},{})
         
     except:
         return csvfile
@@ -773,12 +842,14 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     write_fasta(fastaFile, targets, pc)
     # Avoid issues with sequence ids
     fastaShortNameFile = os.path.join(outdir, "seqids.fasta")
+    fastaInfoNameFile = os.path.join(outdir, "seqinfo.fasta")
     write_fasta(fastaShortNameFile, targets, pc, short=True)
+    write_fasta(fastaInfoNameFile, targets, pc, info=True)
     
 
     (hydrop, weight, isoelec, polar, helices, sheets, turns, coils) = sequence_properties(fastaShortNameFile)
     if not NoMSA:
-        cons = conservation_properties(fastaShortNameFile)
+        cons = conservation_properties(fastaInfoNameFile)
     else:
         cons = {}
     
@@ -786,6 +857,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     # final table, do all data and value storing before this!
     tdist = {}
     rows = []
+
 
     for y in targets:
         try:
@@ -854,9 +926,8 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
        
         except KeyError:
             pass
-
     sortrows = sort_rows(rows, (-10, -9, 4) )
-
+    updateMSA(outdir, sortrows)
 
     head = ('Seq. ID','Description', 'Organism Source', 'Tax. distance', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score',
             'Rxn Sim.', "Direction Used", "Direction Preferred",

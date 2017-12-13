@@ -16,12 +16,19 @@ $(document)
 			el: document.getElementById("msa"),
 			seqs: seqs,
 			vis: {
-			    conserv: false,
-			    overviewbox: true,
-			    seqlogo: true
+			    conserv: true,
+			    overviewbox: false,
+			    seqlogo: true,
+			    metacell: false,
+			    labelId: false
 			},
 			zoomer : {
+			    columnWidth: 15,
 			    rowHeight: 20,
+			    labelNameLength: 450,
+			    labelPartLength: 200,
+			    labelFontsize: "6px",
+			    alignmentHeight: 1000
 			},
 			// smaller menu for JSBin
 			menu: "small",

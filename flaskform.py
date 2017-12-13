@@ -379,8 +379,10 @@ def sort_table():
         session = json.loads(request.values.get('session'))
         csvname = os.path.basename(json.loads(request.values.get('csv')))
         csvfile = os.path.join(app.config['UPLOAD_FOLDER'], session, csvname)
+        outdir = os.path.join(app.config['UPLOAD_FOLDER'], session)
         head, rows = Selenzy.read_csv(csvfile)
         sortrows = Selenzy.sort_rows(rows, filt)
+        Selenzy.updateMSA(outdir, sortrows)
         Selenzy.write_csv(csvfile, head, sortrows)
         data = pd.read_csv(csvfile)
         data.index = data.index + 1
