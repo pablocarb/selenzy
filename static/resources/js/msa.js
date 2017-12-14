@@ -20,7 +20,8 @@ $(document)
 			    overviewbox: false,
 			    seqlogo: true,
 			    metacell: false,
-			    labelId: false
+			    labelId: false,
+			    labelCheckbox: false
 			},
 			zoomer : {
 			    columnWidth: 15,

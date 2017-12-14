@@ -21,12 +21,13 @@ class preLoad(object):
         pass
 
     def fasta(self, datadir, ffile="seqs.fasta"):
-        (sequence, names, descriptions, fulldescriptions, osource) = readFasta(datadir, ffile)
+        (sequence, names, descriptions, fulldescriptions, osource, pexistence) = readFasta(datadir, ffile)
         self.sequence = sequence
         self.names = names
         self.descriptions = descriptions
         self.fulldescriptions = fulldescriptions
         self.osource = osource
+        self.pexistence = pexistence
 
     def fpData(self, datadir):
         self.fp = {}
@@ -194,19 +195,20 @@ def seqScore(newscore=None):
     import string
     # Initial score
     vdict = {
-        string.ascii_uppercase[10]: ('Reaction similarity:', 100.0, True),
-        string.ascii_uppercase[9]: ('Sequence conservation:', 1.0, True),
+        string.ascii_uppercase[9]: ('Reaction similarity:', 100.0, True),
+        string.ascii_uppercase[8]: ('Sequence conservation:', 1.0, True),
         string.ascii_uppercase[4]: ('Sequence taxonomic distance:', -1.0, True),
-        string.ascii_uppercase[13]: ('Percentage helices:', 0.0, False),
-        string.ascii_uppercase[14]: ('Percentage sheets:', 0.0, False),
-        string.ascii_uppercase[15]: ('Percentage turns:', 0.0, False),
-        string.ascii_uppercase[16]: ('Molecular weight:', 0.0, False),
-        string.ascii_uppercase[17]: ('Isoelectric point:', 0.0, False),
-        string.ascii_uppercase[18]: ('Percentage polar amino acids:', 0.0, False)
+        string.ascii_uppercase[7]: ('Uniprot protein evidence:', -0.1, True),
+        string.ascii_uppercase[12]: ('Percentage helices:', 0.0, False),
+        string.ascii_uppercase[13]: ('Percentage sheets:', 0.0, False),
+        string.ascii_uppercase[14]: ('Percentage turns:', 0.0, False),
+        string.ascii_uppercase[15]: ('Molecular weight:', 0.0, False),
+        string.ascii_uppercase[16]: ('Isoelectric point:', 0.0, False),
+        string.ascii_uppercase[17]: ('Percentage polar amino acids:', 0.0, False)
     }
     nvdict = vdict.copy()
     # Reference order (alternatively, perhaps easier to keep table order)
-    clist = [string.ascii_uppercase[x] for x in [10, 9, 4, 13, 14, 15, 16, 17, 18]]
+    clist = [string.ascii_uppercase[x] for x in [9,8,4,7,12,13,14,15,16,17]]
     # Update score if given and well-formed
     update = False
     if newscore is not None:
@@ -269,6 +271,7 @@ def readFasta(datadir, fileFasta, limit=None):
     descriptions = {}
     fulldescriptions = {}
     osource = {}
+    pexistence = {}
     names = []
     seen = set()
     seen_add = seen.add
@@ -295,7 +298,7 @@ def readFasta(datadir, fileFasta, limit=None):
             y = shortdesc.replace(",", ";")
         else:
             y = shortdesc
-        
+        pe = orgsource.rsplit('PE=')[1].split(' ')[0]
         if x not in seen:
             names.append(x)
             seen_add(x)
@@ -304,6 +307,7 @@ def readFasta(datadir, fileFasta, limit=None):
         descriptions[x]= y
         osource[x]=shortos
         fulldescriptions[x] = fulldesc
+        pexistence[x] = pe
         # A practical limit hardcoded
         if limit is not None:
             try:
@@ -312,7 +316,7 @@ def readFasta(datadir, fileFasta, limit=None):
             except:
                 continue
     
-    return (sequence, names, descriptions, fulldescriptions, osource)
+    return (sequence, names, descriptions, fulldescriptions, osource, pexistence)
  
 def readRxnCons(consensus):
     
@@ -706,12 +710,14 @@ def extend_sequences(initialfastafile, fastafile, workfolder, noMSA):
     shortfile = short_fasta(os.path.join(workfolder, fastafile))
     try:
         # TO do: Check that does not assume Uniprot format...
-        (sequence, names, descriptions, fulldescriptions, osource) = readFasta(workfolder, fastafile, limit=1000)
+        (sequence, names, descriptions,
+         fulldescriptions, osource, pexistence) = readFasta(workfolder, fastafile, limit=1000)
         
         if len(sequence) == 0:
             return csvfile
 
-        (hydrop, weight, isoelec, polar, helices, sheets, turns, coils) = sequence_properties(os.path.join(workfolder, shortfile))
+        (hydrop, weight, isoelec, polar, helices,
+         sheets, turns, coils) = sequence_properties(os.path.join(workfolder, shortfile))
         fasta = open(os.path.join(workfolder, initialfastafile)).readlines()
         fasta.extend(open(os.path.join(workfolder, fastafile)).readlines())
         with open(os.path.join(workfolder, initialfastafile), 'w') as handler:
@@ -760,11 +766,12 @@ def extend_sequences(initialfastafile, fastafile, workfolder, noMSA):
         try:
             description = descriptions[n]
             source = osource[n]
+            ext = pexistence[n]
         except:
             description = '-'
             source = '-'
         row = [0.0, n, description, source, -1,
-               '-', '-', 0, n, conservation, 1, 1, 1,
+               '-', '-', ext, conservation, 1, 1, 1,
                h, e, t, c, w, i, pol, '-', '-']
         rows.append( row )
     write_csv(csvfile, head, rows)
@@ -809,6 +816,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     descriptions = pc.descriptions
     fulldescriptions = pc.fulldescriptions
     osource = pc.osource
+    pexistence = pc.pexistence
     seqorg = pc.seqorg
     tax = pc.tax
     MnxToUprot = pc.MnxToUprot
@@ -865,6 +873,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
             desc = descriptions[y]
             fdesc = fulldescriptions[y]
             org = osource[y]
+            ext = pexistence[y]
             mnx = UprotToMnx[y]
             rxnsimpre = float(MnxSim[mnx])
             rxnsim = float("{0:.5f}".format(rxnsimpre))
@@ -921,7 +930,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
                 else:
                     tdist[org] = '-'
 
-            rows.append( (y, desc, org, tdist[org], mnx, ecid, cn, repid, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
+            rows.append( (y, desc, org, tdist[org], mnx, ecid, ext, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
 
        
         except KeyError:
@@ -929,7 +938,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     sortrows = sort_rows(rows, (-10, -9, 4) )
     updateMSA(outdir, sortrows)
 
-    head = ('Seq. ID','Description', 'Organism Source', 'Tax. distance', 'Rxn. ID', 'EC Number', 'Clust. No.', 'Rep. ID.', 'Consv. Score',
+    head = ('Seq. ID','Description', 'Organism Source', 'Tax. distance', 'Rxn. ID', 'EC Number', 'Uniprot protein evidence', 'Consv. Score',
             'Rxn Sim.', "Direction Used", "Direction Preferred",
             '% helices', '% sheets', '% turns', '% coils', 'Mol. Weight', 'Isoelec. Point', 'Polar %','Query', 'Hit')
 
