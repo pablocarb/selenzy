@@ -196,9 +196,9 @@ def seqScore(newscore=None):
     # Initial score
     vdict = {
         string.ascii_uppercase[9]: ('Reaction similarity:', 100.0, True),
-        string.ascii_uppercase[8]: ('Sequence conservation:', 1.0, True),
-        string.ascii_uppercase[4]: ('Sequence taxonomic distance:', -1.0, True),
-        string.ascii_uppercase[7]: ('Uniprot protein evidence:', -0.1, True),
+        string.ascii_uppercase[8]: ('Sequence <a href="https://en.wikipedia.org/wiki/Conserved_sequence" target="_blank">conservation</a>:', 1.0, True),
+        string.ascii_uppercase[4]: ('Sequence <a href="https://www.ncbi.nlm.nih.gov/taxonomy" target="_blank">taxonomic</a> distance:', -1.0, True),
+        string.ascii_uppercase[7]: ('Uniprot <a href="http://www.uniprot.org/help/protein_existence" target="_blank">protein evidence</a>:', -0.1, True),
         string.ascii_uppercase[12]: ('Percentage helices:', 0.0, False),
         string.ascii_uppercase[13]: ('Percentage sheets:', 0.0, False),
         string.ascii_uppercase[14]: ('Percentage turns:', 0.0, False),

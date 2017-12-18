@@ -170,7 +170,7 @@ class RestQuery(Resource):
             if 'targets' in args:
                 targets = args['targets']
             else:
-                targets = '20'
+                targets = '50'
             if 'direction' in args:
                 direction = int(args['direction'])
             else:
@@ -574,7 +574,7 @@ if __name__== "__main__":  #only run server if file is called directly
 
     if arg.d:
         app.config['DEBUG'] = True
-        app.config['PRELOAD'] = True # False
+        app.config['PRELOAD'] = True
     else:
         app.config['DEBUG'] = False
         app.config['PRELOAD'] = True        

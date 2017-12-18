@@ -129,6 +129,84 @@ Selenzyme: Enzyme Selection Tool</h1>
 		    <li> <b>Host organism:</b> Compute phylogenetic distance of source organisms to selected host.</li>
 		    <li> <b>Similarity:</b> Select method for reaction similarity (see about <a href="http://rdkit.readthedocs.io/en/latest/GettingStartedInPython.html" target="_blank">fingerprints</a>).</li>
 		    </ul>
+		  <li><b>REST service:</b></li>
+		  <ul>
+		    <li>The base URL for the API is <a href="http://selenzyme.synbiochem.co.uk/REST">selenzyme.synbiochem.co.uk/REST</a></li>
+		    <li><b>POST Query</b></li>
+		    <table class="restinfo">
+		      <tr>
+			<th>Postdata</th>
+			<th>Description</th>
+		      </tr>
+		      <tr>
+			<td>
+			  smarts
+			</td>
+			<td>
+			  Reaction smarts (if no external database identifier is provided).
+			</td>
+		      </tr>
+		      <tr>
+			<td>
+			  db
+			</td>
+			<td>
+			 External database source: bigg, biopath, brenda, ec, kegg, metacyc, mnx, reactome, rhea, sabiork, seed, upa.
+			</td>
+		      </tr>
+		      <tr>
+			<td>
+			  rxnid
+			</td>
+			<td>
+			  Reaction identifier for the external database.
+			</td>
+		      </tr>
+		      <tr>
+			<td>
+			  targets
+			</td>
+			<td>
+			  Maximum number of hits (default: 50).
+			</td>
+		      </tr>
+		      <tr>
+			<td>
+			  direction
+			</td>
+			<td>
+			  Use only consensus reaction direction (default: 0).
+			</td>
+		      </tr>
+		      <tr>
+			<td>
+			  noMSA
+			</td>
+			<td>
+			  Do not compute multiple sequence alignment (default: True).
+			</td>
+		      </tr>
+		      <tr>
+			<td>
+			  host
+			</td>
+			<td>
+			  NCBI taxonomic id of host organism (default: 83333).
+			</td>
+		      </tr>
+		      <tr>
+			<td>
+			  fp
+			</td>
+			<td>
+			  reaction similiarity fingerprint: RDK, Pattern, Morgan (default: RDK).
+			</td>
+		      </tr>
+
+
+		     </table>
+	
+		  </ul>
 		  </ul>
 		  Contact: <a href="mailto:pablo.carbonell@manchester.ac.uk">Pablo Carbonell</a>, SYNBIOCHEM.
 	    <div>

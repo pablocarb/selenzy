@@ -27,7 +27,7 @@
       </div>
     </center>
   </div>
- <div class="Filter Selector"><a href='#'>[Change score]</a></div>
+ <div class="Filter Selector"><a href='#'>[Column definition/Change score ]</a></div>
   <div class="Return Selector"><a href="/">[New query]</a></div>
   <div style="clear: both;"></div>
   <h2></h2>
@@ -38,7 +38,7 @@
 <ul>
 {% for item in score %}
 <li>
-  <span class="sclabel"><b>{{item[0]}}.</b> {{item[1]}}</span>
+  <span class="sclabel"><b>{{item[0]}}.</b> {{item[1]|safe}}</span>
   <input type="number" value="{{item[2]}}" colname="{{item[0]}}" class="scval"></input>
   <input type="checkbox" class="sccheck" {% if item[3] %} checked {% else %} {{ item[3] }} {% endif %}/>
 </li>

@@ -149,7 +149,7 @@ $(document)
 			}
 		    },
 		    error : function() {
-			resetForm( 'Bad request or unknown file extension' );
+			resetForm( 'Bad or unknown request.' );
 		    }
 		});
 		event.preventDefault();
