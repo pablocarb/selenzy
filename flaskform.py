@@ -71,6 +71,9 @@ def init_session():
     session['rxnifo'] = None
     session['status'] = False
     session['username'] = session['uniqueid']
+    # Restart the Score for each new session
+    session['SCORE'] = Selenzy.seqScore()
+
 
 def reset_session():
     uniqueid = str(uuid.uuid4())
@@ -94,7 +97,7 @@ def run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA):
                                                     pc = app.config['TABLES']
     ) # this creates CSV file in Uploads directory
     if success:
-        data = Selenzy.updateScore(file_path(uniqueid, csvfile), app.config['SCORE'])
+        data = Selenzy.updateScore(file_path(uniqueid, csvfile), session['SCORE'])
         return data, csvfile, uniqueid
 
     
@@ -146,6 +149,7 @@ class RestQuery(Resource):
     We init an independent session for the REST request."""
     def post(self):
         args = request.json
+        init_session()
         if 'rxnid' in args and 'db' in args and 'smarts' not in args:
             """ Retrieve the SMARTS from the database id """
             db = args['db']
@@ -187,9 +191,8 @@ class RestQuery(Resource):
                 fp = args['fp']
             else:
                 fp = 'RDK'
-            init_session()
             if 'score' in args:
-                app.config['SCORE'] = Selenzy.seqScore(args['score'])
+                session['SCORE'] = Selenzy.seqScore(args['score'])
             try:
                 if isinstance(rxninfo, (list, tuple) ):
                     data = []
@@ -413,7 +416,7 @@ def add_rows():
             else:
                 noMSA = True
             csvfile = Selenzy.extend_sequences('sequences.fasta', fastafile, uniquefolder, noMSA)
-            data = Selenzy.updateScore(file_path(uniquefolder, csvfile), app.config['SCORE'])
+            data = Selenzy.updateScore(file_path(uniquefolder, csvfile), session['SCORE'])
 
             data = pd.read_csv(csvfile)
             data.index = data.index + 1
@@ -471,22 +474,22 @@ def score_table():
     """ Score table """
     if request.method == 'POST':
         score = json.loads(request.values.get('score'))
-        session = json.loads(request.values.get('session'))
+        sessid = json.loads(request.values.get('session'))
         csvname = os.path.basename(json.loads(request.values.get('csv')))
-        csvfile = os.path.join(app.config['UPLOAD_FOLDER'], session, csvname)
-        app.config['SCORE'] = Selenzy.seqScore(score)
-        data = Selenzy.updateScore(csvfile, app.config['SCORE'])
+        csvfile = os.path.join(app.config['UPLOAD_FOLDER'], sessid, csvname)
+        session['SCORE'] = Selenzy.seqScore(score)
+        data = Selenzy.updateScore(csvfile, session['SCORE'])
         return json.dumps( {'data': {'csv':  data.to_html()}} )
 
 @app.route('/debug', methods=['GET'])
 def show_table():
     if app.debug == True:
         csvfile = os.path.join(app.config['UPLOAD_FOLDER'], 'debug', 'selenzy_results.csv')
-        data = Selenzy.updateScore(csvfile, app.config['SCORE'])
+        data = Selenzy.updateScore(csvfile, session['SCORE'])
         sessionid = 'debug'
         data.rename_axis('Select', axis="columns")
         return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid,
-                               flags={'fasta': False, 'msa': False}, score=app.config['SCORE'])
+                               flags={'fasta': False, 'msa': False}, score=session['SCORE'])
     else:
         return redirect ( url_for('upload_form') )
 
@@ -503,7 +506,7 @@ def upload_file():
                 flash("No file selected")
                 return redirect (request.url)
             data, csvfile, sessionid = retrieve_session(fileinfo)
-            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False}, score=app.config['SCORE'])
+            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': False, 'msa': False}, score=session['SCORE'])
         else:
             try:
                 rxninfo = session['rxninfo']
@@ -522,7 +525,7 @@ def upload_file():
             noMSA = True
         try:
             data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA)
-            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA}, score=app.config['SCORE'])
+            return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid, flags={'fasta': True, 'msa': not noMSA}, score=session['SCORE'])
         except:
             return redirect( url_for("upload_form") )
     elif request.method == 'GET':
@@ -552,7 +555,7 @@ def upload_file():
             try:
                 data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA)
                 return render_template('results.html', tables=data.to_html(), csvfile=csvfile, sessionid=sessionid,
-                                       flags={'fasta': True, 'msa': not noMSA}, score=app.config['SCORE'])
+                                       flags={'fasta': True, 'msa': not noMSA}, score=session['SCORE'])
             except:
                 return redirect( url_for("upload_form") )
     return redirect( url_for("upload_form") )
@@ -570,7 +573,6 @@ if __name__== "__main__":  #only run server if file is called directly
     app.config['UPLOAD_FOLDER'] = os.path.abspath(arg.uploaddir)
     app.config['LOG_FOLDER'] = os.path.abspath(arg.logdir)
     app.config['DATA_FOLDER'] = os.path.abspath(arg.datadir)
-    app.config['SCORE'] = Selenzy.seqScore()
 
     if arg.d:
         app.config['DEBUG'] = True
