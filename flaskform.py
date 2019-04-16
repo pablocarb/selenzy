@@ -17,6 +17,7 @@ from werkzeug import secure_filename
 import pandas as pd
 import numpy as np
 
+global session
 app = Flask(__name__)
 api = Api(app)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
@@ -48,6 +49,7 @@ def file_path(uniqueid, filename):
     return uniquename
 
 def save_rxn(rxninfo):
+    global session
     filename = secure_filename(rxninfo.filename)
     try:
         uniquename = file_path(session['uniqueid'], filename)
@@ -61,6 +63,7 @@ def save_rxn(rxninfo):
     return rxninfo
 
 def init_session():
+    global session
     maintenance(app.config['KEEPDAYS'])
     reset_session()
     uniqueid = session['uniqueid']
@@ -76,11 +79,13 @@ def init_session():
 
 
 def reset_session():
+    global session
     uniqueid = str(uuid.uuid4())
     app.logger.info( 'New session: %s' % (uniqueid,) )
     session['uniqueid'] = uniqueid
 
 def run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA):
+    global session
     uniqueid = session['uniqueid']
     uniquefolder = session['uniquefolder']
     csvfile = "selenzy_results.csv"
@@ -102,6 +107,7 @@ def run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA):
 
     
 def retrieve_session(csvinfo):
+    global session
     uniqueid = session['uniqueid']
     uniquefolder = os.path.join(app.config['UPLOAD_FOLDER'], uniqueid)
     if not os.path.exists(uniquefolder):
@@ -148,6 +154,7 @@ class RestQuery(Resource):
     """ REST interface to Selenzy, by default it does not run the MSA to be faster. 
     We init an independent session for the REST request."""
     def post(self):
+        global session
         args = request.json
         init_session()
         if 'rxnid' in args and 'db' in args and 'smarts' not in args:
@@ -197,11 +204,11 @@ class RestQuery(Resource):
                 if isinstance(rxninfo, (list, tuple) ):
                     data = []
                     for instance in rnxinfo:
-                        dat, csvfile, session = run_session(rxntype, instance, targets, direction, host, fp, noMSA)
+                        dat, csvfile, sessionid = run_session(rxntype, instance, targets, direction, host, fp, noMSA)
                         data.append(dat)
                     data = pd.DataFrame(data)
                 else:
-                    data, csvfile, session = run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA)
+                    data, csvfile, sessionid = run_session(rxntype, rxninfo, targets, direction, host, fp, noMSA)
                 return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': data.to_json()})
             except:
                 return jsonify({'app': 'Selenzy', 'version': '1.0', 'author': 'Synbiochem', 'data': None})
