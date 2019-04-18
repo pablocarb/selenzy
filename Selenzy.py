@@ -57,18 +57,24 @@ class preLoad(object):
         self.tax = readTaxonomy(datadir, fl[4])
 
     def reacData(self, datadir, smf):
+        """ Transitional downgrade mapping for mnx v3 to v2.
+        In the future everything will be based on v3.
+        """
         smiFile = os.path.join(datadir, smf[0])
         rxnRefFile = os.path.join(datadir, smf[1])
         rxnConsensus = os.path.join(datadir, smf[2])
         rxnProp = os.path.join(datadir, smf[3])
         rxnBrenda = os.path.join(datadir, smf[4])
         rxnSabiork = os.path.join(datadir, smf[5])
+        rxnv3 = None
+        if len(smf) > 6:
+            rxnv3 = os.path.join(datadir, smf[6])
         self.smir = {}
         if os.path.exists(smiFile):
             self.smir = reactionSmiles(smiFile)
         self.rxnref = {}
         if os.path.exists(rxnRefFile):
-            self.rxnref = reactionXref(rxnRefFile, rxnBrenda, rxnSabiork)
+            self.rxnref = reactionXref(rxnRefFile, rxnBrenda, rxnSabiork,rxnv3)
         self.rxndir = {}
         if os.path.exists(rxnConsensus):
             self.rxndir = readRxnCons(rxnConsensus)
@@ -86,7 +92,7 @@ def readData(datadir):
     pc.fpData(datadir)
     pc.seqData(datadir, ['reac_seqs.tsv', 'upclst.json', 'clstrep.json', "seq_org.tsv", "org_lineage.csv"])
     pc.reacData(datadir, ['reac_smi.csv','reac_xref.tsv',"rxn_consensus_20160612.txt",
-                          'reac_prop.tsv', 'brenda-mnxref2.tsv', 'sabiork-mnxref2.tsv'])
+                          'reac_prop.tsv', 'brenda-mnxref2.tsv', 'sabiork-mnxref2.tsv', 'reac_xref_v3.tsv'])
     return pc
 
 def availableFingerprints():
@@ -427,7 +433,7 @@ def readRxnProp(rxnprop):
                     rxnec[rxnid].add(e)
     return ecrxn, rxnec
 
-def reactionXref(rxnRefFile, rxnBrenda, rxnSabiork):
+def reactionXref(rxnRefFile, rxnBrenda, rxnSabiork, rxnv3=None):
     rxnref = {}
     for xref in (rxnRefFile, rxnBrenda, rxnSabiork):
         with open(xref) as handler:
@@ -436,6 +442,19 @@ def reactionXref(rxnRefFile, rxnBrenda, rxnSabiork):
                     continue
                 row = line.rstrip().split('\t')
                 rxnref[row[0]] = row[1]
+                rxnref['mnx:'+row[1]] = row[1]
+    # Downgrade v3 to v2
+    if rxnv3 is not None:
+        for line in open(rxnv3):
+            if line.startswith('#'):
+                continue
+            row = line.rstrip().split('\t')
+            try:
+                db, rid = row[0].split(':')
+                if db == 'deprecated':
+                    rxnref['mnx:'+row[1]] = rid
+            except:
+                continue
     return rxnref
 
 def ecSmiles(ecrxn, rsmi, rxnref):

@@ -301,7 +301,7 @@ def display_msa():
 
 @app.route('/display', methods=['POST'])
 def display_reaction(marvin=app.config['MARVIN']):
-    """ Display the reaction """
+    """ Validates the query and displays the reaction """
     if request.method == 'POST':
         size = (600,400)
         if 'file' in request.files and len(request.files['file'].filename) > 0:
