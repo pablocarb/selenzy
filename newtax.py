@@ -56,13 +56,13 @@ def host_analyse(arg):
     tax = Selenzy.readTaxonomy(arg.datadir, fileLineage)
     taxNodes = Selenzy2.superTax2(tax)
     if arg.host == str():
-        datos = Selenzy.analyse(['-smarts', "O=C([O-])CCC(=O)C(=O)[O-].NC(CC(=O)[O-])C(=O)O>>O=C([O-])CC(=O)C(=O)[O-].NC(CCC(=O)[O-])C(=O)O"],20,arg.datadir,arg.outdir, "result.csv", NoMSA=True,host=arg.host)
+        datos = Selenzy.analyse(rxnInput,arg.tar,arg.datadir,arg.outdir, "result.csv", NoMSA=True,host=arg.host)
         df= pd.read_csv(os.path.join(arg.outdir,"result.csv"))
     else:
         host = arg.host[0]
         if host not in tax:
             host = '83333'
-        datos = Selenzy.analyse(['-smarts', "O=C([O-])CCC(=O)C(=O)[O-].NC(CC(=O)[O-])C(=O)O>>O=C([O-])CC(=O)C(=O)[O-].NC(CCC(=O)[O-])C(=O)O"],20,arg.datadir,arg.outdir, "result.csv", NoMSA=True,host=host)
+        datos = Selenzy.analyse(rxnInput,arg.tar,arg.datadir,arg.outdir, "result.csv", NoMSA=True,host=host)
         df= pd.read_csv(os.path.join(arg.outdir,"result.csv"))
         outfile = os.path.join(arg.outdir,'new.csv')
         df2 = Selenzy2.analyse2(df,arg.host,taxNodes,arg.datadir,outfile)
