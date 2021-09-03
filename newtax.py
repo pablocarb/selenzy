@@ -47,60 +47,152 @@ import Selenzy
 import Selenzy2
 import os
 import argparse
+from typing import (
+    List,
+)
+
 fileSeqOrg = "seq_org.tsv" 
 fileLineage = "org_lineage.csv"
-def split_host(host):
-    x=host.split(",")
-    return x
-def host_analyse(arg):
-    tax = Selenzy.readTaxonomy(arg.datadir, fileLineage)
-    taxNodes = Selenzy2.superTax2(tax)
-    if arg.host == str():
-        datos = Selenzy.analyse(rxnInput,arg.tar,arg.datadir,arg.outdir, "result.csv", NoMSA=True,host=arg.host)
-        df= pd.read_csv(os.path.join(arg.outdir,"result.csv"))
-    else:
-        host = arg.host[0]
-        if host not in tax:
-            host = '83333'
-        datos = Selenzy.analyse(rxnInput,arg.tar,arg.datadir,arg.outdir, "result.csv", NoMSA=True,host=host)
-        data = Selenzy.updateScore(os.path.join(arg.outdir,"result.csv"), Selenzy.seqScore())
-        outfile = os.path.join(arg.outdir,'new.csv')
-        df2 = Selenzy2.analyse2(data,arg.host,taxNodes,arg.datadir,outfile)
-def arguments():
-    parser = argparse.ArgumentParser(description="""Run Selenzyme for multiple hosts.""")
-    parser.add_argument('rxn', 
-                        help='Input reaction [default = rxn file]')
-    parser.add_argument('-tar', type=float, default=20,
-                        help='Number of targets to display in results [default = 20]')
-    parser.add_argument('-d', type=float, default=0,
-                        help='Use similiarity values for preferred reaction direction only [default=0 (OFF)]')
-    parser.add_argument('datadir',
-                        help='specify data directory for required databases files, please end with slash')
-    parser.add_argument('outdir',
-                        help='specify output directory for all output files, including final CSV file, please end with slash')
-    parser.add_argument('-outfile',
-                        help='specify non-default name for CSV file output')
-    parser.add_argument('-NoMSA', action='store_true',
-                        help='Do not compute MSA/conservation scores')
-    parser.add_argument('-smarts', action='store_true',
-                        help='Input is a reaction SMARTS string')
-    parser.add_argument('-smartsfile', action='store_true',
-                        help='Input is a reaction SMARTS file')
-    parser.add_argument('-host', type=str, default='83333',
-                        help='Comma separated taxon ids [default: E. coli]')
-    arg = parser.parse_args()
-    return arg
-if __name__ == '__main__':
-    arg = arguments() 
-    newpath = os.path.join(arg.outdir)
+
+def newtax(
+    smarts: str,
+    smartsfile: str,
+    rxn: str,
+    host: str,
+    datadir: str,
+    outdir: str,
+    targ: str,
+    pc = None,
+):
+    newpath = os.path.join(outdir)
     if not os.path.exists(newpath):
         os.makedirs(newpath) 
-    if arg.smarts is not None:
-        rxnInput = ['-smarts', arg.rxn]
-    elif arg.smartsfile:
-        rxnInput = ['-smartsfile', arg.rxn]
+    if smarts is not None:
+        rxnInput = ['-smarts', rxn]
+    elif smartsfile:
+        rxnInput = ['-smartsfile', rxn]
     else:
-        rxnInput = ['-rxn', arg.rxn]
-    #Convert host list to array
-    arg.host = split_host(arg.host)
-    host_analyse(arg)
+        rxnInput = ['-rxn', rxn]
+    # Convert host list to array
+    host = split_host(host)
+    host_analyse(
+        rxnInput=rxnInput,
+        host=host,
+        targ=targ,
+        datadir=datadir,
+        outdir=outdir,
+        pc=pc
+    )
+
+def split_host(host: str) -> List[str]:
+    return host.split(",")
+
+def host_analyse(
+    rxnInput: str,
+    datadir: str,
+    outdir: str,
+    host: str,
+    targ: str,
+    pc = None
+):
+    tax = Selenzy.readTaxonomy(datadir, fileLineage)
+    taxNodes = Selenzy2.superTax2(tax)
+    if host == str():
+        datos = Selenzy.analyse(
+            rxnInput=rxnInput,
+            targ=targ,
+            datadir=datadir,
+            outdir=outdir,
+            csvfilename="result.csv",
+            NoMSA=True,
+            host=host
+        )
+    else:
+        _host = host[0]
+        if _host not in tax:
+            _host = '83333'
+        datos = Selenzy.analyse(
+            rxnInput=rxnInput,
+            targ=targ,
+            datadir=datadir,
+            outdir=outdir,
+            csvfilename="result.csv",
+            NoMSA=True,
+            host=_host,
+            pc=pc
+        )
+        data = Selenzy.updateScore(os.path.join(outdir,"result.csv"), Selenzy.seqScore())
+        outfile = os.path.join(outdir,'new.csv')
+        df2 = Selenzy2.analyse2(
+            df=data,
+            host=host,
+            taxNodes=taxNodes,
+            datadir=datadir,
+            outfile=outfile
+        )
+
+def arguments():
+    parser = argparse.ArgumentParser(description="""Run Selenzyme for multiple hosts.""")
+    parser.add_argument(
+        'rxn', 
+        help='Input reaction [default = rxn file]'
+    )
+    parser.add_argument(
+        '-tar',
+        type=float,
+        default=20,
+        help='Number of targets to display in results [default = 20]'
+        )
+    parser.add_argument(
+        '-d',
+        type=float,
+        default=0,
+        help='Use similiarity values for preferred reaction direction only [default=0 (OFF)]'
+    )
+    parser.add_argument(
+        'datadir',
+        help='specify data directory for required databases files, please end with slash'
+    )
+    parser.add_argument(
+        'outdir',
+        help='specify output directory for all output files, including final CSV file, please end with slash'
+    )
+    parser.add_argument(
+        '-outfile',
+        help='specify non-default name for CSV file output'
+    )
+    parser.add_argument(
+        '-NoMSA',
+        action='store_true',
+        help='Do not compute MSA/conservation scores'
+    )
+    parser.add_argument(
+        '-smarts',
+        action='store_true',
+        help='Input is a reaction SMARTS string'
+    )
+    parser.add_argument(
+        '-smartsfile',
+        action='store_true',
+        help='Input is a reaction SMARTS file'
+    )
+    parser.add_argument(
+        '-host',
+        type=str,
+        default='83333',
+        help='Comma separated taxon ids [default: E. coli]'
+    )
+    arg = parser.parse_args()
+    return arg
+
+if __name__ == '__main__':
+    args = arguments()
+    newtax(
+        smarts=args.smarts,
+        smartsfile=args.smartsfile,
+        rxn=args.rxn,
+        host=args.host,
+        datadir=args.datadir,
+        outdir=args.outdir,
+        targ=args.tar
+    )
