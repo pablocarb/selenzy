@@ -63,9 +63,9 @@ def host_analyse(arg):
         if host not in tax:
             host = '83333'
         datos = Selenzy.analyse(rxnInput,arg.tar,arg.datadir,arg.outdir, "result.csv", NoMSA=True,host=host)
-        df= pd.read_csv(os.path.join(arg.outdir,"result.csv"))
+        data = Selenzy.updateScore(os.path.join(arg.outdir,"result.csv"), Selenzy.seqScore())
         outfile = os.path.join(arg.outdir,'new.csv')
-        df2 = Selenzy2.analyse2(df,arg.host,taxNodes,arg.datadir,outfile)
+        df2 = Selenzy2.analyse2(data,arg.host,taxNodes,arg.datadir,outfile)
 def arguments():
     parser = argparse.ArgumentParser(description="""Run Selenzyme for multiple hosts.""")
     parser.add_argument('rxn', 

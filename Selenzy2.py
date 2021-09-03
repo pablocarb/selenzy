@@ -46,6 +46,8 @@ def analyse2(df,host,taxNodes,datadir,outfile = None):
               df.loc[rowi,org+ ' ' '_target_ca_dist'] = distancia[2]
           [targetID,nameID] = seqorg.get(seqid)
           df.loc[rowi, 'target_ID']= targetID
+          #df.loc[rowi, 'Source'] = score
           if outfile is not None:
+              
               df.to_csv(outfile)
     return df
