@@ -189,13 +189,16 @@ def readTaxonomy(datadir, fileLineage):
     return tax
 
 def taxDistance(tax, host, target):
-    if host in tax and target in tax:
+    if host not in tax:
+        return 100 # no host, no clue
+    else:
         hostLineage = set(tax[host])
+    if target not in tax:
+        distance = 1 + 2*len(hostLineage)
+    else:
         targetLineage = set(tax[target])
         distance = 1 + len(hostLineage ^ targetLineage)
-        return distance
-    else:
-        return '-'
+    return distance
 
 def seqScore(newscore=None):
     import string
@@ -234,7 +237,7 @@ def seqScore(newscore=None):
         nvdict = vdict
     score = []
     for x in clist:
-        score.append( (x,) + nvdict[x] )
+        score.append( (x,) + nvdict[x] )   
     return score
 
 def updateScore(csvfile, score):
@@ -260,12 +263,12 @@ def updateScore(csvfile, score):
         except:
             continue
     data['Score'] = sco
-    data = data.sort_values('Score', ascending=False)
+    data = data.sort_values(by=['Score', 'Seq. ID'], ascending=[False,True])
     updateMSA(os.path.dirname(csvfile), [[v] for v in data['Seq. ID']])
     data = data.reset_index(drop=True)
     data.index = data.index + 1
     data.rename_axis('Select', axis="columns")
-    data.to_csv(csvfile, quoting=csv.QUOTE_ALL, index=False)
+    data.to_csv(csvfile, quoting=csv.QUOTE_ALL, index=False)        
     return data
 
 
@@ -843,7 +846,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     clstrep = pc.clstrep
     smir = pc.smir
 
-    list_mnx = sorted(MnxSim, key=MnxSim.__getitem__, reverse=True)  #allow user to manipulate window of initial rxn id list
+    list_mnx = sorted(MnxSim, key= lambda y: (-float(MnxSim[y]),y), reverse= False)  #allow user to manipulate window of initial rxn id list
     print ("Creating initial MNX list...")
     targets = set()
     UprotToMnx = {}
@@ -853,6 +856,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
     for x in list_mnx:
         up = MnxToUprot.get(x)  
         if up is not None:
+            up = sorted(up)
             for y in up:
                 if len(targets) >= int(targ):    # allow user to manipulate desired number of entries for resulting table
                     break
@@ -947,7 +951,7 @@ def analyse(rxnInput, targ, datadir, outdir, csvfilename, pdir=0, host='83333', 
                 if y in seqorg:
                     tdist[org] = taxDistance(tax, host, seqorg[y][0])
                 else:
-                    tdist[org] = '-'
+                    tdist[org] = taxDistance(tax, host, '-') # no clue about the target
 
             rows.append( (y, desc, org, tdist[org], mnx, ecid, ext, conservation, rxnsim, rxndirused, rxndirpref, h, e, t, c, w, i, pol, Smiles, mnxSmiles) )
 
